@@ -35,7 +35,7 @@ class Singlenodeview extends ConsumerWidget {
             child: Consumer(builder: (context, ref, child) {
               return Container(
                 decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.background,
+                    color: Theme.of(context).colorScheme.surface,
                     boxShadow: [
                       BoxShadow(
                           offset: const Offset(0, 4),

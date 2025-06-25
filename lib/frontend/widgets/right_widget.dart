@@ -6,7 +6,6 @@ import 'package:mqtt_browser/main.dart';
 import 'package:json_view/json_view.dart';
 import 'package:mqtt_browser/frontend/custom_json_view/custom_json_view.dart';
 import 'dart:convert';
-import 'package:expandable_widgets/expandable_widgets.dart';
 import 'custom_expandable_widget.dart';
 import 'package:flutter/services.dart';
 
@@ -76,12 +75,13 @@ class ValuesWidget extends ConsumerWidget {
         [],
         ref);
     String topicsString = makeStringFromList(topicsList, ref);
-    final currentHistory = ref
-        .watch(treeNodesProvider)[ref.watch(currentRootProvider).label]![ref
-            .watch(treeNodesProvider)[ref.watch(currentRootProvider).label]!
-            .indexOf(ref.watch(
-                selectedItemProvider)[ref.watch(currentRootProvider).label]!)]
-        .history;
+    final nodesList =
+        ref.watch(treeNodesProvider)[ref.watch(currentRootProvider).label]!;
+    final selectedNode =
+        ref.watch(selectedItemProvider)[ref.watch(currentRootProvider).label]!;
+    final nodeIndex = nodesList.indexOf(selectedNode);
+    final currentHistory =
+        (nodeIndex != -1) ? nodesList[nodeIndex].history : <String>[];
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -89,7 +89,7 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-              backgroundColor: Theme.of(context).colorScheme.background,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
                     offset: const Offset(0, 4),
@@ -179,7 +179,7 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-              backgroundColor: Theme.of(context).colorScheme.background,
+              backgroundColor: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
                     offset: const Offset(0, 4),
@@ -279,7 +279,7 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-                backgroundColor: Theme.of(context).colorScheme.background,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                       offset: const Offset(0, 4),

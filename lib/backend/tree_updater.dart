@@ -15,73 +15,47 @@ add(String topic, String payload) async {
   for (int i = 0; i < topicList.length - 1; i++) {
     String label = topicList[i];
     TreeNode? existingChild = parentNode?.children.firstWhereOrNull((child) {
-      // Check if child.label is not null and then compare with label
       return child.label != null && child.label == label;
     });
-
-    if (existingChild != null) {
-      // If the child already exists, update the parent node reference
-      parentNode = existingChild;
-    } else {
-      // If the child does not exist, add it to the parent
-      TreeNode newNode = TreeNode(
-        label: label,
-      );
-      newNode.parent = parentNode;
-      parentNode?.children.add(newNode);
-
-      for (var currentNode
-          in globalProviderContainer.read(treeNodesProvider).keys) {
-        var newState =
-            globalProviderContainer.read(treeNodesProvider)[currentNode];
-        newState!.add(newNode);
-        globalProviderContainer
-            .read(treeNodesProvider.notifier)
-            .state[currentNode] = newState;
-      }
-      parentNode = newNode;
+    // If the child does not exist, create it and add to parent
+    if (existingChild == null && parentNode != null) {
+      existingChild = TreeNode(label: label);
+      parentNode.children.add(existingChild);
     }
+    parentNode = existingChild;
   }
 
   // Add or update the new child node to the last parent node in the hierarchy
   String childLabel = topicList.last;
   TreeNode? existingChild = parentNode?.children.firstWhereOrNull((child) {
-    // Check if child.label is not null and then compare with label
     return child.label != null && child.label == childLabel;
   });
 
-  if (existingChild != null) {
-    // If the child already exists, update it
-    existingChild.label = childLabel; // Update label if necessary
+  // If the child does not exist, create it and add to parent
+  if (existingChild == null && parentNode != null) {
+    existingChild = TreeNode(label: childLabel);
+    parentNode.children.add(existingChild);
     existingChild.addMessage(payload);
-
-    for (var currentNode
-        in globalProviderContainer.read(treeNodesProvider).keys) {
-      var newState =
-          globalProviderContainer.read(treeNodesProvider)[currentNode];
-      newState!.add(existingChild);
-      globalProviderContainer
-          .read(treeNodesProvider.notifier)
-          .state[currentNode] = newState;
-    }
-  } else {
-    // If the child does not exist, add it to the parent
-    TreeNode newNode = TreeNode(label: childLabel)..addMessage(payload);
-    newNode.parent = parentNode;
-    parentNode?.children.add(newNode);
-
-    for (var currentNode
-        in globalProviderContainer.read(treeNodesProvider).keys) {
-      var newState =
-          globalProviderContainer.read(treeNodesProvider)[currentNode];
-      newState!.add(newNode);
-
-      globalProviderContainer
-          .read(treeNodesProvider.notifier)
-          .state[currentNode] = newState;
-    }
+  } else if (existingChild != null) {
+    // If the child already exists, update it
+    existingChild.label = childLabel;
+    existingChild.addMessage(payload);
   }
-  rebuildAllControllers();
+
+  if (existingChild != null) {
+    for (var currentNode
+        in globalProviderContainer.read(treeNodesProvider).keys) {
+      var newState =
+          globalProviderContainer.read(treeNodesProvider)[currentNode];
+      if (newState != null) {
+        newState.add(existingChild);
+        globalProviderContainer
+            .read(treeNodesProvider.notifier)
+            .state[currentNode] = newState;
+      }
+    }
+    rebuildAllControllers();
+  }
 }
 
 rebuildAllControllers() async {

@@ -46,12 +46,12 @@ class SetupWidget extends ConsumerWidget {
       required this.startClient});
   final TextEditingController hostTextController;
   final TextEditingController portTextController;
-  final Function startClient;
+  final ValueChanged<WidgetRef> startClient;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentWidth = MediaQuery.of(context).size.width;
-    ref.watch(fileProvider);
+    //ref.watch(fileProvider);
     return Center(
         child: currentWidth > 750
             ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -64,7 +64,7 @@ class SetupWidget extends ConsumerWidget {
                 SetupSettings(
                   hostTextController: hostTextController,
                   portTextController: portTextController,
-                  startClient: startClient(ref),
+                  startClient: (val) => startClient(ref),
                   width: 380,
                   height: 380,
                 )
@@ -73,7 +73,7 @@ class SetupWidget extends ConsumerWidget {
                 SetupSettings(
                   hostTextController: hostTextController,
                   portTextController: portTextController,
-                  startClient: startClient(ref),
+                  startClient: (val) => startClient(ref),
                   width: 380,
                   height: 380,
                 ),

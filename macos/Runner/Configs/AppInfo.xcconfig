@@ -8,7 +8,7 @@
 PRODUCT_NAME = mqtt_browser
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = de.linguwerk.mqtt_browser
+PRODUCT_BUNDLE_IDENTIFIER = com.example.mqttBrowser
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2024 de.linguwerk.mqtt_browser. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.

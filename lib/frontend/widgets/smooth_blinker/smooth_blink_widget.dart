@@ -67,21 +67,17 @@ class SmoothHighlight extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final animationController = useAnimationController(duration: duration);
-    useEffect(() {
-      if (animationController.status == AnimationStatus.completed) {
-        Timer(Duration(milliseconds: ref.watch(blinkDelayProvider).toInt()),
-            () {
-          animationController.forward();
-        });
-      } else if (animationController.status == AnimationStatus.dismissed) {
-        Timer(Duration(milliseconds: ref.watch(blinkDelayProvider).toInt()),
-            () {
-          animationController.forward();
-        });
-      }
+    final node = ref.watch(currentNodeProvider).node;
+    final prevMessageCount = useRef(node.messageCount);
 
+    useEffect(() {
+      if (node.messageCount > prevMessageCount.value) {
+        animationController.forward(from: 0);
+      }
+      prevMessageCount.value = node.messageCount;
       return null;
-    }, [ref.watch(currentNodeProvider).node.messageCount]);
+    }, [node.messageCount]);
+
     final Animation<Decoration> startAnimation = animationController
         .drive(
           CurveTween(curve: Curves.easeInOut),
