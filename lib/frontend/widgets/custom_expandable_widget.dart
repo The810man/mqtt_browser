@@ -1,5 +1,8 @@
-import 'package:expandable_widgets/expandable_widgets.dart';
 import 'package:flutter/material.dart';
+
+enum ArrowLocation { left, right }
+
+enum Clickable { none, firstChildOnly, everywhere }
 
 class CustomExpandable extends StatefulWidget {
   /// • The widget that is placed at the non-collapsing part of the expandable.

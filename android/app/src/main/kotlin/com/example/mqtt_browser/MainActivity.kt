@@ -1,4 +1,4 @@
-package de.linguwerk.mqtt_browser
+package com.example.mqtt_browser
 
 import io.flutter.embedding.android.FlutterActivity
 

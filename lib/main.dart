@@ -202,7 +202,7 @@ final themeDataProvider = StateProvider<ThemeData>((ref) {
           brightness: Brightness.light,
           colorScheme: const ColorScheme.light(
               shadow: Color.fromARGB(69, 141, 141, 141),
-              background: Color.fromARGB(255, 247, 247, 247),
+              surface: Color.fromARGB(255, 247, 247, 247),
               primary: Color.fromARGB(255, 0, 0, 0),
               secondary: Color.fromARGB(255, 78, 78, 78),
               tertiary: Color.fromARGB(96, 255, 255, 255),
@@ -216,7 +216,7 @@ final themeDataProvider = StateProvider<ThemeData>((ref) {
           brightness: Brightness.dark,
           colorScheme: const ColorScheme.dark(
               shadow: Color.fromARGB(255, 117, 117, 126),
-              background: Color.fromARGB(255, 29, 27, 41),
+              surface: Color.fromARGB(255, 29, 27, 41),
               primary: Color.fromARGB(255, 221, 221, 221),
               secondary: Color.fromARGB(255, 145, 145, 145),
               tertiary: Color.fromARGB(61, 0, 0, 0),

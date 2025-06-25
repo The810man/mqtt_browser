@@ -16,7 +16,7 @@ class SetupSettings extends ConsumerWidget {
   });
   final TextEditingController hostTextController;
   final TextEditingController portTextController;
-  final void Function(WidgetRef) startClient;
+  final ValueChanged<WidgetRef> startClient;
   final double height;
   final double width;
 
