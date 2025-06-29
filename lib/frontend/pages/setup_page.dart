@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
+import 'package:mqtt_browser/frontend/widgets/custom_painters/custom_painter_widgets/line_with_streak_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/mqtt_background_grid_icons.dart';
 import 'package:mqtt_browser/frontend/widgets/reactive_widgets/setup_widget.dart';
 import 'package:mqtt_browser/main.dart';
@@ -49,67 +50,68 @@ class SetUpPage extends ConsumerWidget {
     ref.watch(versionSetter);
     ref.watch(routerProvider);
 
-    return Scaffold(
-      backgroundColor: ref.watch(themeDataProvider).colorScheme.surface,
-      appBar: AppBar(
-        elevation: 4,
-        centerTitle: false,
-        automaticallyImplyLeading: false,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(2)),
-        ),
-        title: const Text(
-          "Client Setup",
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontStyle: FontStyle.normal,
-            fontSize: 20,
-          ),
-        ),
-        leading: const Icon(
-          Icons.menu,
-          size: 24,
-        ),
-        actions: [
-          Row(
-            children: [
-              const Text("Darkmode"),
-              Switch.adaptive(
-                  value: ref.watch(colorModeProvider),
-                  onChanged: (outputBool) async {
-                    await ref.read(sharedPreferencesProvider)!.setBool(
-                        SharedPreferenceKey.darkMode.stringValue, outputBool);
-                    ref.read(colorModeProvider.notifier).state = outputBool;
-                  })
-            ],
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(0, 0, 20, 0),
-            child: Icon(Icons.account_tree_outlined, size: 24),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          const TiledBackground(
-            tile: Icon(MqttBackgroundGrid.unbetitelt_2,
-                size: 50, color: Colors.grey),
-            spacing: 50,
-            opacity: 0.5,
-          ),
-          Positioned(
-              bottom: 0.0,
-              right: 0.0,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text("v${ref.watch(versionProvider).toString()}"),
-              )),
-          SetupWidget(
-              hostTextController: hostTextController,
-              portTextController: portTextController,
-              startClient: _startClient)
-        ],
-      ),
-    );
+    return LineWithStreakWidget();
+    //   Scaffold(
+    //     backgroundColor: ref.watch(themeDataProvider).colorScheme.surface,
+    //     appBar: AppBar(
+    //       elevation: 4,
+    //       centerTitle: false,
+    //       automaticallyImplyLeading: false,
+    //       shape: const RoundedRectangleBorder(
+    //         borderRadius: BorderRadius.all(Radius.circular(2)),
+    //       ),
+    //       title: const Text(
+    //         "Client Setup",
+    //         style: TextStyle(
+    //           fontWeight: FontWeight.w800,
+    //           fontStyle: FontStyle.normal,
+    //           fontSize: 20,
+    //         ),
+    //       ),
+    //       leading: const Icon(
+    //         Icons.menu,
+    //         size: 24,
+    //       ),
+    //       actions: [
+    //         Row(
+    //           children: [
+    //             const Text("Darkmode"),
+    //             Switch.adaptive(
+    //                 value: ref.watch(colorModeProvider),
+    //                 onChanged: (outputBool) async {
+    //                   await ref.read(sharedPreferencesProvider)!.setBool(
+    //                       SharedPreferenceKey.darkMode.stringValue, outputBool);
+    //                   ref.read(colorModeProvider.notifier).state = outputBool;
+    //                 })
+    //           ],
+    //         ),
+    //         const Padding(
+    //           padding: EdgeInsets.fromLTRB(0, 0, 20, 0),
+    //           child: Icon(Icons.account_tree_outlined, size: 24),
+    //         ),
+    //       ],
+    //     ),
+    //     body: Stack(
+    //       children: [
+    //         const TiledBackground(
+    //           tile: Icon(MqttBackgroundGrid.unbetitelt_2,
+    //               size: 50, color: Colors.grey),
+    //           spacing: 50,
+    //           opacity: 0.5,
+    //         ),
+    //         Positioned(
+    //             bottom: 0.0,
+    //             right: 0.0,
+    //             child: Padding(
+    //               padding: const EdgeInsets.all(8.0),
+    //               child: Text("v${ref.watch(versionProvider).toString()}"),
+    //             )),
+    //         SetupWidget(
+    //             hostTextController: hostTextController,
+    //             portTextController: portTextController,
+    //             startClient: _startClient)
+    //       ],
+    //     ),
+    //   );
   }
 }
