@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:mqtt_browser/main.dart';
-import 'package:mqtt_client/mqtt_client.dart';
 
 int timeSinceLastCall = 0;
 Map<TreeNode, DateTime> nodeTimeMap = {};
@@ -70,8 +70,10 @@ void reciveStreams() {
       .updates!
       .listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
     final recMess = c![0].payload as MqttPublishMessage;
-    final pt =
-        MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
-    add(c[0].topic, pt);
+    final pt = MqttUtilities.bytesToStringAsString(recMess.payload.message!);
+    final topic = c[0].topic;
+    if (topic != null) {
+      add(topic, pt);
+    }
   });
 }

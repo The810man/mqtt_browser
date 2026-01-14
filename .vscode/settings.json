@@ -1,3 +1,6 @@
 {
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "chat.tools.terminal.autoApprove": {
+        "flutter": true
+    }
 }

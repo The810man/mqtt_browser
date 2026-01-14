@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/main.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
+import '../models/data_point.dart';
+import '../widgets/simple_line_chart.dart';
 
 final graphDataProvider = Provider((ref) => GraphData());
 
@@ -84,30 +85,16 @@ class Testgraphviewpage extends ConsumerWidget {
       ),
       body: Center(
         child: SizedBox(
-          height: 500,
-          child: StatefulBuilder(builder: (context, setState) {
-            return SfCartesianChart(
-              zoomPanBehavior: ZoomPanBehavior(enableMouseWheelZooming: true),
-              primaryXAxis: NumericAxis(),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: <ChartSeries>[
-                LineSeries<DataPoint, double>(
-                  dataSource: graphData.data,
-                  xValueMapper: (DataPoint point, _) => point.x,
-                  yValueMapper: (DataPoint point, _) => point.y,
-                ),
+          width: 900,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                SimpleLineChart(data: graphData.data, title: '$title'),
               ],
-            );
-          }),
+            ),
+          ),
         ),
       ),
     );
   }
-}
-
-class DataPoint {
-  final double x;
-  final double y;
-
-  DataPoint(this.x, this.y);
 }

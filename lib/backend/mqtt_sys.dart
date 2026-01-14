@@ -1,117 +1,232 @@
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_browser_client.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:mqtt5_client/mqtt5_browser_client.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_server_client.dart';
 import 'package:mqtt_browser/main.dart';
+import 'package:mqtt_browser/services/mqtt_settings_service.dart';
+
+// Error handling and logging configuration
+class MqttConnectionConfig {
+  final int maxReconnectAttempts;
+  final int initialBackoffMs;
+  final int maxBackoffMs;
+  final bool enableLogging;
+  final Function(String)? onError;
+  final Function(String)? onLog;
+
+  MqttConnectionConfig({
+    this.maxReconnectAttempts = 10,
+    this.initialBackoffMs = 1000,
+    this.maxBackoffMs = 30000,
+    this.enableLogging = true,
+    this.onError,
+    this.onLog,
+  });
+}
+
+MqttConnectionConfig _config = MqttConnectionConfig();
+
+void setMqttConfig(MqttConnectionConfig config) {
+  _config = config;
+}
+
+void _log(String message, {bool isError = false}) {
+  if (_config.enableLogging) {
+    if (isError) {
+      print('❌ MQTT Error: $message');
+      _config.onError?.call(message);
+    } else {
+      print('✓ MQTT: $message');
+      _config.onLog?.call(message);
+    }
+  }
+}
 
 onDisconnected(currentClient) {
-  print('OnDisconnected client callback - Client disconnection');
+  _log('Client disconnected', isError: false);
   if (currentClient.connectionStatus!.disconnectionOrigin ==
       MqttDisconnectionOrigin.solicited) {
-    print('OnDisconnected callback is solicited, this is correct');
+    _log('Disconnection was solicited');
   } else {
-    print(
-        'OnDisconnected callback is unsolicited or none, this is incorrect - exiting');
+    _log('Unexpected disconnection - will attempt reconnect');
   }
 }
 
 onSubscribed(String topic) {
-  print('Subscription confirmed for topic $topic');
+  _log('Successfully subscribed to: $topic');
 }
 
 createClient(clientName, clientPort) {
-  final client = kIsWeb
-      ? MqttBrowserClient('$clientName', '')
-      : MqttServerClient('$clientName', '');
-  client.setProtocolV311();
-  client.websocketProtocols = MqttClientConstants.protocolsSingleDefault;
-  client.port = clientPort;
-  return client;
+  try {
+    final client = kIsWeb
+        ? MqttBrowserClient('$clientName', '')
+        : MqttServerClient('$clientName', '');
+    client.port = clientPort;
+    _log('MQTT client created: $clientName:$clientPort');
+    return client;
+  } catch (e) {
+    _log('Failed to create MQTT client: $e', isError: true);
+    rethrow;
+  }
 }
 
 onConnected(currentClient) {
-  currentClient.subscribe("\$SYS/#", MqttQos.exactlyOnce);
-  currentClient.subscribe("#", MqttQos.exactlyOnce);
-  globalProviderContainer.read(isConnectedProvider.notifier).state = true;
+  try {
+    // Keep default system subscriptions
+    currentClient.subscribe("\$SYS/#", MqttQos.exactlyOnce);
+    // Respect settings: subscribe to '#' only if configured
+    final settings = globalProviderContainer.read(mqttSettingsProvider);
+    if (settings.autoSubscribeOnConnect) {
+      // If the saved settings include subscriptions, subscribe to them; otherwise default to '#'
+      if (settings.subscriptions.isNotEmpty) {
+        for (final sub in settings.subscriptions) {
+          try {
+            final topic = sub['topic']?.toString() ?? '#';
+            final qos = sub['qos'] is int
+                ? sub['qos'] as int
+                : int.tryParse(sub['qos']?.toString() ?? '0') ?? 0;
+            clientSubcribe(currentClient, topic, qos);
+          } catch (e) {
+            _log('Failed subscribing to saved topic: $e', isError: true);
+          }
+        }
+      } else {
+        // fallback
+        currentClient.subscribe("#", MqttQos.exactlyOnce);
+      }
+    }
+
+    globalProviderContainer.read(isConnectedProvider.notifier).state = true;
+    _log('Successfully connected and subscribed to system topics');
+  } catch (e) {
+    _log('Failed during onConnected callback: $e', isError: true);
+  }
 }
 
 startClient(currentClient, bool needLogging, bool needAutoReconnect) async {
-  currentClient.logging(on: needLogging);
-  currentClient.setProtocolV311();
-  currentClient.autoReconnect = needAutoReconnect;
+  try {
+    currentClient.logging(on: needLogging);
+    currentClient.autoReconnect = needAutoReconnect;
+    _log(
+        'Client started - logging: $needLogging, autoReconnect: $needAutoReconnect');
+  } catch (e) {
+    _log('Failed to start client: $e', isError: true);
+  }
 }
 
 setUpClient(
     currentClient, int keepAlivePeriod, int connectTimeoutPeriod) async {
-  currentClient.keepAlivePeriod = keepAlivePeriod;
-  currentClient.connectTimeoutPeriod = connectTimeoutPeriod;
-  currentClient.onDisconnected = onDisconnected(currentClient);
-  currentClient.onSubscribed = onSubscribed;
+  try {
+    currentClient.onDisconnected = () => onDisconnected(currentClient);
+    currentClient.onSubscribed = (String topic) => onSubscribed(topic);
+    _log(
+        'Client setup complete - keepAlive: $keepAlivePeriod, timeout: $connectTimeoutPeriod');
+  } catch (e) {
+    _log('Failed to set up client: $e', isError: true);
+  }
 }
 
 setUpConnMess(String clientUniqueId, String willTopic, String willMessage,
     currentClient) {
-  final connMess = MqttConnectMessage()
-      .withClientIdentifier(clientUniqueId)
-      .withWillTopic(willTopic) // If you set this you must set a will message
-      .withWillMessage(willMessage)
-      .startClean() // Non persistent session for testing
-      .withWillQos(MqttQos.atLeastOnce);
-  print('MQTT client connecting.... please wait');
-  currentClient.connectionMessage = connMess;
-}
-
-clientTryConnect(currentClient) async {
   try {
-    await currentClient.connect();
-  } on NoConnectionException {
-    // Raised by the client when connection fails.
-    currentClient.disconnect();
-  } on SocketException catch (e) {
-    // Raised by the socket layer
-    print('socket exception - $e');
-    currentClient.disconnect();
-  }
-
-  /// Check we are connected
-  if (currentClient.connectionStatus!.state == MqttConnectionState.connected) {
-    print('Mosquitto client connected');
-    onConnected(currentClient);
-  } else {
-    /// Use status here rather than state if you also want the broker return code.
-    print(
-        'ERROR Mosquitto client connection failed - disconnecting, status is ${currentClient.connectionStatus}');
-    currentClient.disconnect();
+    final connMess =
+        MqttConnectMessage().withClientIdentifier(clientUniqueId).startClean();
+    _log('Connecting with client ID: $clientUniqueId');
+    currentClient.connectionMessage = connMess;
+  } catch (e) {
+    _log('Failed to set up connection message: $e', isError: true);
   }
 }
 
-clientSubcribe(currentClient, String topic, int qosLevel) async {
-  if (qosLevel == 0) {
-    currentClient.subscribe(topic, MqttQos.atMostOnce);
+Future<bool> clientTryConnect(currentClient, {int attemptNumber = 1}) async {
+  try {
+    _log('Connection attempt $attemptNumber...');
+    await currentClient.connect();
+
+    if (currentClient.connectionStatus!.state ==
+        MqttConnectionState.connected) {
+      _log('Successfully connected to broker');
+      onConnected(currentClient);
+      return true;
+    } else {
+      _log('Connection failed: ${currentClient.connectionStatus}',
+          isError: true);
+      currentClient.disconnect();
+      return false;
+    }
+  } catch (e) {
+    _log('Connection exception: $e', isError: true);
+
+    // Calculate backoff with exponential strategy
+    if (attemptNumber < _config.maxReconnectAttempts) {
+      final backoffMs = _calculateBackoff(attemptNumber);
+      _log(
+          'Retrying in ${backoffMs}ms (attempt ${attemptNumber + 1}/${_config.maxReconnectAttempts})');
+      await Future.delayed(Duration(milliseconds: backoffMs));
+      return clientTryConnect(currentClient, attemptNumber: attemptNumber + 1);
+    } else {
+      _log('Max reconnection attempts exceeded', isError: true);
+      currentClient.disconnect();
+      return false;
+    }
   }
-  if (qosLevel == 1) {
-    currentClient.subscribe(topic, MqttQos.atLeastOnce);
-  }
-  if (qosLevel == 2) {
-    currentClient.subscribe(topic, MqttQos.exactlyOnce);
-  } else {
-    return ErrorDescription(
-        "qosLevels Need To be between 0 and 2, youre value was $qosLevel");
+}
+
+int _calculateBackoff(int attemptNumber) {
+  final backoff =
+      _config.initialBackoffMs * (1 << (attemptNumber - 1)); // Exponential
+  return backoff.clamp(0, _config.maxBackoffMs);
+}
+
+clientSubcribe(currentClient, String topic, int qosLevel) {
+  try {
+    final MqttQos? qos = qosLevel == 0
+        ? MqttQos.atMostOnce
+        : qosLevel == 1
+            ? MqttQos.atLeastOnce
+            : qosLevel == 2
+                ? MqttQos.exactlyOnce
+                : null;
+    if (qos == null) {
+      throw ArgumentError(
+          "qosLevels need to be between 0 and 2; your value was $qosLevel");
+    }
+    currentClient.subscribe(topic, qos);
+    _log('Subscribed to: $topic with QoS $qosLevel');
+  } catch (e) {
+    _log('Failed to subscribe to $topic: $e', isError: true);
+    rethrow;
   }
 }
 
 publishToTopic(String pubTopic, currentClient) async {
-  final builder = MqttClientPayloadBuilder();
-  currentClient.publishMessage(pubTopic, MqttQos.exactlyOnce, builder.payload!);
-  await MqttUtilities.asyncSleep(30);
+  try {
+    final builder = MqttPayloadBuilder();
+    currentClient.publishMessage(
+        pubTopic, MqttQos.exactlyOnce, builder.payload!);
+    _log('Published to: $pubTopic');
+    await Future.delayed(const Duration(seconds: 30));
+  } catch (e) {
+    _log('Failed to publish to $pubTopic: $e', isError: true);
+    rethrow;
+  }
 }
 
 unSubscribeTopic(currentClient, String topic) async {
-  currentClient.unsubscribe(topic);
+  try {
+    currentClient.unsubscribe(topic);
+    _log('Unsubscribed from: $topic');
+  } catch (e) {
+    _log('Failed to unsubscribe from $topic: $e', isError: true);
+    rethrow;
+  }
 }
 
 disconnectClient(currentClient) {
-  currentClient.disconnect();
+  try {
+    currentClient.disconnect();
+    _log('Client disconnected');
+  } catch (e) {
+    _log('Error during disconnect: $e', isError: true);
+  }
 }

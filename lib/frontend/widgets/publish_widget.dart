@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:json_editor/json_editor.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:mqtt_browser/main.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
-import 'package:mqtt_client/mqtt_client.dart';
 
 class PublishWidget extends ConsumerWidget {
   PublishWidget({super.key, required this.root});
@@ -12,7 +12,7 @@ class PublishWidget extends ConsumerWidget {
 
   void publish(String topic, WidgetRef ref) async {
     mqSys.clientSubcribe(ref.read(clientProvider)!, topic, 0);
-    final builder = MqttClientPayloadBuilder();
+    final builder = MqttPayloadBuilder();
     builder.addString(valueTextController.text);
     ref.read(clientProvider)!.publishMessage(
         topic, ref.watch(qos), builder.payload!,

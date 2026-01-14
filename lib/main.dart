@@ -4,14 +4,16 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mqtt5_client/mqtt5_browser_client.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_server_client.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:mqtt_browser/frontend/pages/scaffhold_page.dart';
 import 'package:mqtt_browser/frontend/pages/test_graph_view_page.dart';
-import 'package:mqtt_client/mqtt_browser_client.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:mqtt_browser/frontend/pages/settings_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mqtt_browser/frontend/pages/setup_page.dart';
+import 'package:mqtt_browser/providers/theme_provider.dart';
 
 import 'package:desktop_window/desktop_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -176,6 +178,11 @@ Provider<GoRouter> routerProvider = Provider((ref) => GoRouter(
           path: '/browserPage',
           builder: (context, state) => const ScaffoldPage(),
         ),
+        GoRoute(
+          name: 'settingsPage',
+          path: '/settings',
+          builder: (context, state) => const SettingsPage(),
+        ),
       ],
     ));
 StateProvider<String> hostProvider =
@@ -293,7 +300,7 @@ class MyApp extends ConsumerWidget {
   MyApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentTheme = ref.watch(themeDataProvider);
+    final currentTheme = ref.watch(themeProvider);
     return MaterialApp.router(
       title: 'MQTT-Browser',
       theme: currentTheme,
