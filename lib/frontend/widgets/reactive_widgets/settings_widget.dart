@@ -6,7 +6,7 @@ import 'package:mqtt_browser/services/mqtt_settings_service.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
 import 'package:mqtt_browser/providers/theme_provider.dart';
 
-class SetupSettings extends ConsumerWidget {
+class SetupSettings extends ConsumerStatefulWidget {
   const SetupSettings({
     super.key,
     required this.startClient,
@@ -19,14 +19,44 @@ class SetupSettings extends ConsumerWidget {
   final double width;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SetupSettings> createState() => _SetupSettingsState();
+}
+
+class _SetupSettingsState extends ConsumerState<SetupSettings> {
+  late final TextEditingController _hostController;
+  late final TextEditingController _portController;
+
+  @override
+  void initState() {
+    super.initState();
+    _hostController = TextEditingController(text: ref.read(hostProvider));
+    _portController = TextEditingController(text: ref.read(portProvider));
+  }
+
+  @override
+  void dispose() {
+    _hostController.dispose();
+    _portController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final host = ref.watch(hostProvider);
     final port = ref.watch(portProvider);
     final theme = ref.watch(themeProvider);
 
+    // Update controllers if provider changes externally (e.g., loading connection)
+    if (_hostController.text != host) {
+      _hostController.text = host;
+    }
+    if (_portController.text != port) {
+      _portController.text = port;
+    }
+
     return Container(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
@@ -71,6 +101,7 @@ class SetupSettings extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    controller: _hostController,
                     onChanged: (value) {
                       ref.read(hostProvider.notifier).state = value;
                     },
@@ -94,6 +125,7 @@ class SetupSettings extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   TextField(
+                    controller: _portController,
                     onChanged: (value) {
                       ref.read(portProvider.notifier).state = value;
                     },
@@ -435,12 +467,23 @@ class SetupSettings extends ConsumerWidget {
 
                             if (name != null && name.isNotEmpty) {
                               final settings = ref.read(mqttSettingsProvider);
+                              // Update openTabs with current tabs
+                              final tabList = ref.read(tabListProvider);
+                              final openTabs = tabList
+                                  .map((node) =>
+                                      {'topic': node.label, 'viewType': 'tree'})
+                                  .toList();
+                              final updatedSettings =
+                                  settings.copyWith(openTabs: openTabs);
+                              ref
+                                  .read(mqttSettingsProvider.notifier)
+                                  .updateSettings(updatedSettings);
                               ref.read(fileProvider.notifier).addEntry([
                                 {
                                   "name": name,
                                   "host": host,
                                   "port": portNum,
-                                  'settings': settings.toJson()
+                                  'settings': updatedSettings.toJson()
                                 }
                               ]);
                               ref
@@ -470,7 +513,7 @@ class SetupSettings extends ConsumerWidget {
                       icon: const Icon(Icons.power_settings_new),
                       label: const Text('Connect'),
                       onPressed: () {
-                        startClient(ref);
+                        widget.startClient(ref);
                       },
                     ),
                   ),

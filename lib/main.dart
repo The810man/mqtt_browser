@@ -23,11 +23,14 @@ final searchBarWidthProvider = StateProvider<double?>((ref) => 0.0);
 final searchBarButtonProvider = StateProvider<double?>((ref) => 50);
 final ProviderContainer globalProviderContainer = ProviderContainer();
 StateProvider tabDataProvider =
-    StateProvider<Map<String, TreeController<TreeNode>>>((ref) => {
-          ref.watch(rootProvider).label!: TreeController(
-              roots: [ref.watch(rootProvider)],
-              childrenProvider: (TreeNode node) => node.children)
-        }); // \-> Should look  like Map<String:TreeController> {"localhost:1883":Treecontroller(...), etc}
+    StateProvider<Map<String, Map<String, dynamic>>>((ref) => {
+          ref.watch(rootProvider).label!: {
+            'controller': TreeController(
+                roots: [ref.watch(rootProvider)],
+                childrenProvider: (TreeNode node) => node.children),
+            'viewType': 'tree'
+          }
+        }); // \-> Should look  like Map<String:Map> {"localhost:1883":{'controller':TreeController, 'viewType':'tree'}, etc}
 final changeIshappeningProvider = StateProvider<bool>((ref) {
   return false;
 });
@@ -244,12 +247,14 @@ void resetProviders() {
 
     return client.connectionStatus!.state == MqttConnectionState.connected;
   });
-  tabDataProvider =
-      StateProvider<Map<String, TreeController<TreeNode>>>((ref) => {
-            ref.watch(rootProvider).label!: TreeController(
-                roots: [ref.watch(rootProvider)],
-                childrenProvider: (TreeNode node) => node.children)
-          });
+  tabDataProvider = StateProvider<Map<String, Map<String, dynamic>>>((ref) => {
+        ref.watch(rootProvider).label!: {
+          'controller': TreeController(
+              roots: [ref.watch(rootProvider)],
+              childrenProvider: (TreeNode node) => node.children),
+          'viewType': 'tree'
+        }
+      });
   selectedTabProvider = StateProvider((ref) => null);
   publishTextControllerProvider =
       StateProvider((ref) => TextEditingController());

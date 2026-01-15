@@ -9,6 +9,7 @@ import '../../backend/mqtt_sys.dart' as mqSys;
 final publishQosProvider = StateProvider<MqttQos>((ref) => MqttQos.atMostOnce);
 final publishRetainProvider = StateProvider<bool>((ref) => false);
 final jsonValidationErrorProvider = StateProvider<String?>((ref) => null);
+final publishFormatProvider = StateProvider<String>((ref) => 'json');
 
 class EnhancedPublishWidget extends ConsumerWidget {
   final TreeNode root;
@@ -27,6 +28,37 @@ class EnhancedPublishWidget extends ConsumerWidget {
     }
   }
 
+  String? _validateXml(String xmlString) {
+    if (xmlString.trim().isEmpty) {
+      return 'XML cannot be empty';
+    }
+    // Basic XML validation - check for opening and closing tags
+    if (!xmlString.contains('<') || !xmlString.contains('>')) {
+      return 'Invalid XML: Missing XML tags';
+    }
+    return null;
+  }
+
+  String? _validateText(String textString) {
+    if (textString.trim().isEmpty) {
+      return 'Text cannot be empty';
+    }
+    return null;
+  }
+
+  String? _validatePayload(String payload, String format) {
+    switch (format) {
+      case 'json':
+        return _validateJson(payload);
+      case 'xml':
+        return _validateXml(payload);
+      case 'text':
+        return _validateText(payload);
+      default:
+        return 'Unknown format';
+    }
+  }
+
   String? _validateTopic(String topic) {
     if (topic.trim().isEmpty) {
       return 'Topic cannot be empty';
@@ -40,7 +72,8 @@ class EnhancedPublishWidget extends ConsumerWidget {
   void _publishMessage(BuildContext context, WidgetRef ref) {
     final topicController = ref.read(publishTextControllerProvider);
     final topic = topicController.text;
-    final jsonString = ref.read(currentMessageProvider)[root] ?? '{}';
+    final payload = ref.read(currentMessageProvider)[root] ?? '{}';
+    final format = ref.read(publishFormatProvider);
     final qos = ref.read(publishQosProvider);
     final retain = ref.read(publishRetainProvider);
 
@@ -51,9 +84,9 @@ class EnhancedPublishWidget extends ConsumerWidget {
       return;
     }
 
-    final jsonError = _validateJson(jsonString);
-    if (jsonError != null) {
-      _showError(context, jsonError);
+    final payloadError = _validatePayload(payload, format);
+    if (payloadError != null) {
+      _showError(context, payloadError);
       return;
     }
 
@@ -63,7 +96,7 @@ class EnhancedPublishWidget extends ConsumerWidget {
 
       // Prepare payload
       final builder = MqttPayloadBuilder();
-      builder.addString(jsonString);
+      builder.addString(payload);
 
       // Publish with error handling
       ref.read(clientProvider)!.publishMessage(
@@ -120,8 +153,9 @@ class EnhancedPublishWidget extends ConsumerWidget {
     final topic = ref.watch(publishTextControllerProvider).text;
     final qos = ref.watch(publishQosProvider);
     final retain = ref.watch(publishRetainProvider);
-    final jsonString = ref.watch(currentMessageProvider)[root] ?? '{}';
-    final jsonError = _validateJson(jsonString);
+    final format = ref.watch(publishFormatProvider);
+    final payload = ref.watch(currentMessageProvider)[root] ?? '{}';
+    final payloadError = _validatePayload(payload, format);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -154,7 +188,7 @@ class EnhancedPublishWidget extends ConsumerWidget {
           ),
         ),
 
-        // JSON Editor Section
+        // Payload Editor Section
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
           child: Column(
@@ -164,41 +198,65 @@ class EnhancedPublishWidget extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'JSON Payload',
+                    '${format.toUpperCase()} Payload',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  if (jsonError != null)
-                    Chip(
-                      avatar: const Icon(Icons.warning,
-                          size: 16, color: Colors.white),
-                      label: Text(jsonError,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 11)),
-                      backgroundColor: Colors.red.shade600,
-                    ),
+                  Row(
+                    children: [
+                      DropdownButton<String>(
+                        value: format,
+                        items: const [
+                          DropdownMenuItem(value: 'json', child: Text('JSON')),
+                          DropdownMenuItem(value: 'xml', child: Text('XML')),
+                          DropdownMenuItem(value: 'text', child: Text('Text')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            ref.read(publishFormatProvider.notifier).state =
+                                value;
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      if (payloadError != null)
+                        Chip(
+                          avatar: const Icon(Icons.warning,
+                              size: 16, color: Colors.white),
+                          label: Text(payloadError,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 11)),
+                          backgroundColor: Colors.red.shade600,
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
               Container(
                 decoration: BoxDecoration(
                   border: Border.all(
-                    color:
-                        jsonError != null ? Colors.red : Colors.grey.shade400,
+                    color: payloadError != null
+                        ? Colors.red
+                        : Colors.grey.shade400,
                     width: 1,
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: TextField(
                   maxLines: 5,
-                  controller: TextEditingController(text: jsonString),
+                  controller: TextEditingController(text: payload),
                   decoration: InputDecoration(
-                    hintText: '{"key": "value"}',
+                    hintText: format == 'json'
+                        ? '{"key": "value"}'
+                        : format == 'xml'
+                            ? '<root><element>value</element></root>'
+                            : 'Plain text message',
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(8),
                     filled: true,
-                    fillColor: jsonError != null
+                    fillColor: payloadError != null
                         ? Colors.red.withOpacity(0.05)
                         : Colors.transparent,
                   ),
@@ -300,7 +358,7 @@ class EnhancedPublishWidget extends ConsumerWidget {
               icon: const Icon(Icons.send),
               label: const Text('Publish Message',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              onPressed: jsonError == null && topic.isNotEmpty
+              onPressed: payloadError == null && topic.isNotEmpty
                   ? () => _publishMessage(context, ref)
                   : null,
             ),

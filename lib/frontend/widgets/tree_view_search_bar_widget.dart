@@ -3,6 +3,9 @@ import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:mqtt_browser/main.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 final class Treeviewsearchbar extends ConsumerWidget {
   Treeviewsearchbar(
@@ -59,6 +62,40 @@ final class Treeviewsearchbar extends ConsumerWidget {
     treeController.roots = [ref.watch(treeNodesProvider)[rootNode.label]![0]];
   }
 
+  Future<void> _exportTree(BuildContext context, WidgetRef ref) async {
+    try {
+      final treeData = _serializeTree(rootNode);
+      final jsonString = jsonEncode(treeData);
+
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName =
+          'mqtt_tree_export_${DateTime.now().millisecondsSinceEpoch}.json';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsString(jsonString);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tree exported to ${file.path}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
+  }
+
+  Map<String, dynamic> _serializeTree(TreeNode node) {
+    return {
+      'label': node.label,
+      'history': node.history,
+      'totalMessages': node.totalMessages,
+      'children': node.children.map(_serializeTree).toList(),
+    };
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Row(children: [
@@ -73,6 +110,15 @@ final class Treeviewsearchbar extends ConsumerWidget {
           ref.read(searchBarWidthProvider.notifier).state = 200;
           ref.read(searchBarButtonProvider.notifier).state = 0;
         },
+      ),
+      IconButton(
+        constraints: const BoxConstraints(maxWidth: 50, minHeight: 30),
+        icon: const Icon(
+          Icons.download,
+          color: Colors.black,
+        ),
+        onPressed: () => _exportTree(context, ref),
+        tooltip: 'Export Tree to JSON',
       ),
       SearchBar(
         controller: textController,

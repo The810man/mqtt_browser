@@ -14,6 +14,7 @@ class MqttSettings {
   final int? maxReconnectDelay; // milliseconds
   final bool autoSubscribeOnConnect;
   final List<Map<String, dynamic>> subscriptions;
+  final List<Map<String, dynamic>> openTabs;
 
   MqttSettings({
     required this.host,
@@ -28,6 +29,7 @@ class MqttSettings {
     this.maxReconnectDelay,
     this.autoSubscribeOnConnect = true,
     this.subscriptions = const [],
+    this.openTabs = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -43,6 +45,7 @@ class MqttSettings {
         'maxReconnectDelay': maxReconnectDelay,
         'autoSubscribeOnConnect': autoSubscribeOnConnect,
         'subscriptions': subscriptions,
+        'openTabs': openTabs,
       };
 
   factory MqttSettings.fromJson(Map<String, dynamic> json) => MqttSettings(
@@ -61,6 +64,10 @@ class MqttSettings {
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
             [],
+        openTabs: (json['openTabs'] as List<dynamic>?)
+                ?.map((e) => Map<String, dynamic>.from(e as Map))
+                .toList() ??
+            [],
       );
 
   MqttSettings copyWith({
@@ -76,6 +83,7 @@ class MqttSettings {
     int? maxReconnectDelay,
     bool? autoSubscribeOnConnect,
     List<Map<String, dynamic>>? subscriptions,
+    List<Map<String, dynamic>>? openTabs,
   }) =>
       MqttSettings(
         host: host ?? this.host,
@@ -92,6 +100,7 @@ class MqttSettings {
         autoSubscribeOnConnect:
             autoSubscribeOnConnect ?? this.autoSubscribeOnConnect,
         subscriptions: subscriptions ?? this.subscriptions,
+        openTabs: openTabs ?? this.openTabs,
       );
 }
 

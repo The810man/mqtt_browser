@@ -5,6 +5,7 @@ class TreeNode {
   String? label;
   List<String> history = [];
   int totalMessages = 0;
+  String? get message => history.isNotEmpty ? history.last : null;
   List<TreeNode> children = [];
 
   int get messageCount {
@@ -29,5 +30,15 @@ class TreeNode {
       count += child.topicCount;
     }
     return count;
+  }
+
+  int getDepth() {
+    int depth = 0;
+    TreeNode? current = parent;
+    while (current != null) {
+      depth++;
+      current = current.parent;
+    }
+    return depth;
   }
 }

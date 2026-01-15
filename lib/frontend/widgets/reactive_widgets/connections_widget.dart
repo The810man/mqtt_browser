@@ -14,6 +14,18 @@ class ConnectionsWidget extends ConsumerWidget {
   final double height;
   final double width;
 
+  IconData _getIcon(String? iconName) {
+    switch (iconName) {
+      case 'router':
+        return Icons.router;
+      case 'settings':
+        return Icons.settings;
+      case 'cloud':
+      default:
+        return Icons.cloud;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(themeProvider);
@@ -104,10 +116,10 @@ class ConnectionsWidget extends ConsumerWidget {
                           elevation: 0,
                           color: theme.colorScheme.surfaceContainer,
                           child: ListTile(
-                            leading: CircleAvatar(
-                              radius: 10,
-                              backgroundColor: theme.colorScheme.primary,
-                              child: const SizedBox.shrink(),
+                            leading: Icon(
+                              _getIcon(connection['icon']),
+                              size: 20,
+                              color: theme.colorScheme.primary,
                             ),
                             title: Text(
                               connection['name'] ?? host,
@@ -147,61 +159,97 @@ class ConnectionsWidget extends ConsumerWidget {
                                             final portController =
                                                 TextEditingController(
                                                     text: port.toString());
-                                            return AlertDialog(
-                                              title:
-                                                  const Text('Edit Connection'),
-                                              content: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  TextField(
-                                                      controller:
-                                                          nameController,
+                                            String selectedIcon =
+                                                connection['icon'] ?? 'cloud';
+                                            return StatefulBuilder(
+                                              builder: (context, setState) =>
+                                                  AlertDialog(
+                                                title: const Text(
+                                                    'Edit Connection'),
+                                                content: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    TextField(
+                                                        controller:
+                                                            nameController,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                                labelText:
+                                                                    'Name')),
+                                                    TextField(
+                                                        controller:
+                                                            hostController,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                                labelText:
+                                                                    'Host')),
+                                                    TextField(
+                                                        controller:
+                                                            portController,
+                                                        decoration:
+                                                            const InputDecoration(
+                                                                labelText:
+                                                                    'Port'),
+                                                        keyboardType:
+                                                            TextInputType
+                                                                .number),
+                                                    DropdownButtonFormField<
+                                                        String>(
+                                                      value: selectedIcon,
                                                       decoration:
                                                           const InputDecoration(
                                                               labelText:
-                                                                  'Name')),
-                                                  TextField(
-                                                      controller:
-                                                          hostController,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                              labelText:
-                                                                  'Host')),
-                                                  TextField(
-                                                      controller:
-                                                          portController,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                              labelText:
-                                                                  'Port'),
-                                                      keyboardType:
-                                                          TextInputType.number),
+                                                                  'Icon'),
+                                                      items: const [
+                                                        DropdownMenuItem(
+                                                            value: 'cloud',
+                                                            child:
+                                                                Text('Cloud')),
+                                                        DropdownMenuItem(
+                                                            value: 'router',
+                                                            child:
+                                                                Text('Router')),
+                                                        DropdownMenuItem(
+                                                            value: 'settings',
+                                                            child: Text(
+                                                                'Settings')),
+                                                      ],
+                                                      onChanged: (value) =>
+                                                          setState(() =>
+                                                              selectedIcon =
+                                                                  value!),
+                                                    ),
+                                                  ],
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.of(ctx)
+                                                              .pop(),
+                                                      child:
+                                                          const Text('Cancel')),
+                                                  FilledButton(
+                                                      onPressed: () {
+                                                        Navigator.of(ctx).pop({
+                                                          'name': nameController
+                                                              .text,
+                                                          'host': hostController
+                                                              .text,
+                                                          'port': int.tryParse(
+                                                                  portController
+                                                                      .text) ??
+                                                              port,
+                                                          'icon': selectedIcon,
+                                                          'settings': connection[
+                                                                  'settings'] ??
+                                                              {},
+                                                        });
+                                                      },
+                                                      child:
+                                                          const Text('Save')),
                                                 ],
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(ctx).pop(),
-                                                    child:
-                                                        const Text('Cancel')),
-                                                FilledButton(
-                                                    onPressed: () {
-                                                      Navigator.of(ctx).pop({
-                                                        'name':
-                                                            nameController.text,
-                                                        'host':
-                                                            hostController.text,
-                                                        'port': int.tryParse(
-                                                                portController
-                                                                    .text) ??
-                                                            port,
-                                                        'settings': connection[
-                                                                'settings'] ??
-                                                            {},
-                                                      });
-                                                    },
-                                                    child: const Text('Save')),
-                                              ],
                                             );
                                           });
                                       if (edited != null) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
-import 'package:mqtt_browser/frontend/widgets/custom_painters/custom_painter_widgets/line_with_streak_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/mqtt_background_grid_icons.dart';
 import 'package:mqtt_browser/frontend/widgets/reactive_widgets/setup_widget.dart';
 import 'package:mqtt_browser/main.dart';
@@ -10,6 +9,11 @@ import 'package:mqtt_browser/providers/theme_provider.dart';
 import 'dart:math';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:mqtt_browser/frontend/widgets/tiled_background.dart';
+import 'package:mqtt_browser/frontend/tree_node.dart';
+import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
+import 'package:mqtt_browser/frontend/widgets/tiled_background.dart';
+import 'package:mqtt_browser/services/mqtt_settings_service.dart'
+    show mqttSettingsProvider;
 
 final versionProvider = StateProvider((ref) => "");
 
@@ -58,6 +62,10 @@ class SetUpPage extends ConsumerWidget {
 
       // Create and configure client
       final client = mqSys.createClient(host, port);
+      if (client == null) {
+        _showError(ref, 'Failed to create MQTT client');
+        return;
+      }
       print('✓ MQTT client created');
 
       // Set up callbacks
@@ -74,21 +82,71 @@ class SetUpPage extends ConsumerWidget {
       ref.read(clientProvider.notifier).state = client;
 
       // Configure client
-      mqSys.startClient(client, true, true);
-      mqSys.setUpClient(client, 60, 5000);
-      print('✓ Client configured');
+      try {
+        mqSys.startClient(client, true, true);
+        mqSys.setUpClient(client, 60, 5000);
+        print('✓ Client configured');
+      } catch (e) {
+        _showError(ref, 'Failed to configure client: $e');
+        return;
+      }
 
       // Set up connection message
       final clientId = "mqtt-browser-${random(100000, 999999)}";
-      mqSys.setUpConnMess(clientId, "will/topic", "Device offline", client);
-      print('✓ Connection message setup: $clientId');
+      try {
+        mqSys.setUpConnMess(clientId, "will/topic", "Device offline", client);
+        print('✓ Connection message setup: $clientId');
+      } catch (e) {
+        _showError(ref, 'Failed to set up connection message: $e');
+        return;
+      }
 
       // Attempt connection with async handling
       print('📡 Starting connection attempt...');
       mqSys.clientTryConnect(client).then((success) {
         if (success) {
-          print('✅ Connection successful!');
-          Tree_Updater.reciveStreams();
+          try {
+            Tree_Updater.reciveStreams();
+            // Open saved tabs
+            final settings = ref.read(mqttSettingsProvider);
+            for (final tab in settings.openTabs) {
+              final topic = tab['topic'] as String?;
+              if (topic != null) {
+                // Find the node by topic
+                final treeNodes =
+                    globalProviderContainer.read(treeNodesProvider);
+                final root = treeNodes[topic];
+                if (root != null && root.isNotEmpty) {
+                  final node = root.first;
+                  // Add to tabList
+                  final currentTabs =
+                      globalProviderContainer.read(tabListProvider);
+                  if (!currentTabs.contains(node)) {
+                    globalProviderContainer
+                        .read(tabListProvider.notifier)
+                        .state = [...currentTabs, node];
+                    // Create tree controller
+                    final controller = TreeController<TreeNode>(
+                        roots: [node],
+                        childrenProvider: (TreeNode node) => node.children);
+                    final tabData =
+                        globalProviderContainer.read(tabDataProvider);
+                    globalProviderContainer
+                        .read(tabDataProvider.notifier)
+                        .state = {
+                      ...tabData,
+                      topic: {
+                        'controller': controller,
+                        'viewType': tab['viewType'] ?? 'tree'
+                      }
+                    };
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            print('⚠️ Error during tab restoration: $e');
+          }
         } else {
           print('❌ Connection failed');
           _showError(ref, 'Connection failed - check host and port');
@@ -155,7 +213,7 @@ class SetUpPage extends ConsumerWidget {
               icon: const Icon(Icons.settings),
               onPressed: () {
                 // Navigate to settings page
-                ref.read(routerProvider).go('/settings');
+                ref.read(routerProvider).push('/settings');
               },
             ),
           ),
@@ -163,11 +221,10 @@ class SetUpPage extends ConsumerWidget {
       ),
       body: Stack(
         children: [
-          const TiledBackground(
-            tile: Icon(MqttBackgroundGrid.unbetitelt_2,
-                size: 50, color: Colors.grey),
-            spacing: 50,
-            opacity: 0.5,
+          InfiniteGridBackground(
+            gridSize: 30.0,
+            lineOpacity: 0.8,
+            lineWidth: 2,
           ),
           Positioned(
               bottom: 0.0,

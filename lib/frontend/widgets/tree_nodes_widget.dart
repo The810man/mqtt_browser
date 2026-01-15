@@ -87,21 +87,24 @@ makeParentsList(TreeNode InputNode, List OutputList) {
 
 void openNewTreeTab(TreeEntry<TreeNode> entry, WidgetRef ref) {
   List<TreeNode> newList = ref.read(tabListProvider).toList();
+  // Ensure the node has a label
+  if (entry.node.label == null || entry.node.label!.isEmpty) {
+    entry.node.label = 'Tab ${newList.length + 1}';
+  }
   newList.add(entry.node);
   ref.read(tabListProvider.notifier).state = newList;
   final newController = TreeController(
       roots: [entry.node], childrenProvider: (TreeNode node) => node.children);
-  ref
-      .read(tabDataProvider.notifier)
-      .state
-      .addAll({entry.node.label.toString(): newController});
-  ref.read(selectedItemProvider).addAll({entry.node.label!: entry.node});
+  final tabData = ref.read(tabDataProvider);
+  final String tabKey = entry.node.label!;
+  ref.read(tabDataProvider.notifier).state = {
+    ...tabData,
+    tabKey: {'controller': newController, 'viewType': 'tree'}
+  };
+  ref.read(selectedItemProvider).addAll({tabKey: entry.node});
   final newTopicList = makeNewNodeList(
       ref.watch(treeNodesProvider)[ref.watch(currentRootProvider).label]!);
-  ref
-      .read(treeNodesProvider.notifier)
-      .state
-      .addAll({entry.node.label!: newTopicList});
+  ref.read(treeNodesProvider.notifier).state.addAll({tabKey: newTopicList});
 }
 
 makeNewNodeList(List<TreeNode> list) {

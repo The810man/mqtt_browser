@@ -21,7 +21,12 @@ class FileNotifier extends StateNotifier<List<Map<String, dynamic>>> {
     if (data == null) {
       // default connection
       addEntry([
-        {"name": "Localhost", "host": "localhost", "port": 1883}
+        {
+          "name": "Localhost",
+          "host": "localhost",
+          "port": 1883,
+          "icon": "cloud"
+        }
       ]);
     } else {
       final decoded = jsonDecode(data) as List<dynamic>;

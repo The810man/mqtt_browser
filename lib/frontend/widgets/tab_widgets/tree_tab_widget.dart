@@ -39,14 +39,16 @@ class Treetabwidget extends ConsumerWidget {
           PopupMenuButton(itemBuilder: (BuildContext context) {
             return [
               PopupMenuItem(
-                  onTap: () =>
-                      ref.watch(tabDataProvider)["${tab.label}"]!.expandAll(),
+                  onTap: () => ref
+                      .watch(tabDataProvider)["${tab.label}"]!['controller']!
+                      .expandAll(),
                   child: const Row(
                     children: [Icon(Icons.expand), Text("Expand All Nodes")],
                   )),
               PopupMenuItem(
-                  onTap: () =>
-                      ref.watch(tabDataProvider)["${tab.label}"]!.collapseAll(),
+                  onTap: () => ref
+                      .watch(tabDataProvider)["${tab.label}"]!['controller']!
+                      .collapseAll(),
                   child: const Row(
                     children: [
                       Icon(Icons.close_fullscreen_outlined),
@@ -54,9 +56,31 @@ class Treetabwidget extends ConsumerWidget {
                     ],
                   )),
               PopupMenuItem(
+                  child: DropdownButton<String>(
+                value: ref.watch(tabDataProvider)["${tab.label}"]!['viewType']
+                    as String,
+                items: const [
+                  DropdownMenuItem(value: 'tree', child: Text('Tree View')),
+                  DropdownMenuItem(value: 'list', child: Text('List View')),
+                  DropdownMenuItem(value: 'mindmap', child: Text('Mindmap')),
+                  DropdownMenuItem(value: 'grid', child: Text('Grid View')),
+                  DropdownMenuItem(value: 'chart', child: Text('Chart View')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    final tabData = ref.read(tabDataProvider);
+                    ref.read(tabDataProvider.notifier).state = {
+                      ...tabData,
+                      tab.label: {...tabData[tab.label]!, 'viewType': value}
+                    };
+                  }
+                },
+              )),
+              PopupMenuItem(
                   child: Treeviewsearchbar(
                 rootNode: tab,
-                treeController: ref.watch(tabDataProvider)["${tab.label}"]!,
+                treeController:
+                    ref.watch(tabDataProvider)["${tab.label}"]!['controller']!,
               ))
             ];
           }),

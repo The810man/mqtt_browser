@@ -111,8 +111,8 @@ class TreeViewPage extends ConsumerWidget {
                 child: SizedBox(
                   height: MediaQuery.of(context).size.height,
                   child: FastTreeNodeView(
-                      treeController: ref.watch(
-                          tabDataProvider)["${ref.watch(rootProvider).label}"]!,
+                      treeController: ref.watch(tabDataProvider)[
+                          "${ref.watch(rootProvider).label}"]!['controller']!,
                       nodes: ref.watch(
                           treeNodesProvider)[ref.watch(rootProvider).label]!),
                 ),

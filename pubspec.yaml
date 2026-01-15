@@ -73,8 +73,12 @@ dependencies:
   path_provider: any
   shared_preferences: ^2.2.3
   fl_chart: ^0.65.0
+  freezed_annotation: ^2.4.1
+
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
+  freezed: ^2.4.1
+  build_runner: ^2.4.6
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
