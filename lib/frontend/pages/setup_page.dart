@@ -1,35 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
-import 'package:mqtt_browser/frontend/widgets/mqtt_background_grid_icons.dart';
 import 'package:mqtt_browser/frontend/widgets/reactive_widgets/setup_widget.dart';
 import 'package:mqtt_browser/main.dart';
 import 'package:mqtt_browser/backend/tree_updater.dart' as Tree_Updater;
-import 'package:mqtt_browser/providers/theme_provider.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 import 'dart:math';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:mqtt_browser/frontend/widgets/tiled_background.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
-import 'package:mqtt_browser/frontend/widgets/tiled_background.dart';
-import 'package:mqtt_browser/services/mqtt_settings_service.dart'
-    show mqttSettingsProvider;
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final versionProvider = StateProvider((ref) => "");
+part 'setup_page.g.dart';
 
-final versionSetter =
-    StateProvider((ref) => PackageInfo.fromPlatform().then((value) {
-          ref.read(versionProvider.notifier).state = value.data["version"];
-        }));
+@Riverpod(keepAlive: true)
+class Version extends _$Version {
+  @override
+  String build() => "";
+}
+
+final versionSetter = FutureProvider<void>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  ref.read(versionProvider.notifier).state = info.data["version"];
+});
+
+@Riverpod(keepAlive: true)
+class ConnectButton extends _$ConnectButton {
+  @override
+  bool build() => false;
+}
 
 class SetUpPage extends ConsumerWidget {
-  final connectButtonProvider = StateProvider<bool>(((ref) => false));
-
   int random(int min, int max) {
     return min + Random().nextInt(max - min);
   }
 
-  SetUpPage({super.key});
+  const SetUpPage({super.key});
 
   void _startClient(WidgetRef ref) {
     try {
@@ -62,21 +69,21 @@ class SetUpPage extends ConsumerWidget {
 
       // Create and configure client
       final client = mqSys.createClient(host, port);
-      if (client == null) {
-        _showError(ref, 'Failed to create MQTT client');
-        return;
-      }
       print('✓ MQTT client created');
 
       // Set up callbacks
       client.onConnected = () {
         print('✅ Connected callback fired');
         ref.read(isConnectedProvider.notifier).state = true;
+        ref.read(mqttClientProvider.notifier).state =
+            MqttConnectionState.connected;
       };
 
       client.onDisconnected = () {
         print('⚠️ Disconnected callback fired');
         ref.read(isConnectedProvider.notifier).state = false;
+        ref.read(mqttClientProvider.notifier).state =
+            MqttConnectionState.disconnected;
       };
 
       ref.read(clientProvider.notifier).state = client;
@@ -103,58 +110,99 @@ class SetUpPage extends ConsumerWidget {
 
       // Attempt connection with async handling
       print('📡 Starting connection attempt...');
-      mqSys.clientTryConnect(client).then((success) {
-        if (success) {
-          try {
-            Tree_Updater.reciveStreams();
-            // Open saved tabs
-            final settings = ref.read(mqttSettingsProvider);
-            for (final tab in settings.openTabs) {
-              final topic = tab['topic'] as String?;
-              if (topic != null) {
-                // Find the node by topic
-                final treeNodes =
-                    globalProviderContainer.read(treeNodesProvider);
-                final root = treeNodes[topic];
-                if (root != null && root.isNotEmpty) {
-                  final node = root.first;
-                  // Add to tabList
-                  final currentTabs =
-                      globalProviderContainer.read(tabListProvider);
-                  if (!currentTabs.contains(node)) {
-                    globalProviderContainer
-                        .read(tabListProvider.notifier)
-                        .state = [...currentTabs, node];
-                    // Create tree controller
-                    final controller = TreeController<TreeNode>(
-                        roots: [node],
-                        childrenProvider: (TreeNode node) => node.children);
-                    final tabData =
-                        globalProviderContainer.read(tabDataProvider);
-                    globalProviderContainer
-                        .read(tabDataProvider.notifier)
-                        .state = {
-                      ...tabData,
-                      topic: {
-                        'controller': controller,
-                        'viewType': tab['viewType'] ?? 'tree'
+      mqSys
+          .clientTryConnect(client)
+          .then((success) {
+            if (success) {
+              ref.read(mqttClientProvider.notifier).state =
+                  MqttConnectionState.connected;
+              try {
+                final rootNode = ref.read(rootProvider);
+                rootNode.label = '$host:$port';
+                final existingTabs = ref.read(tabListProvider);
+                if (existingTabs.isEmpty) {
+                  ref.read(tabListProvider.notifier).state = [rootNode];
+                  ref.read(tabLengthProvider.notifier).state = 1;
+                  ref.read(currentRootProvider.notifier).state = rootNode;
+                  ref.read(treeNodesProvider.notifier).state = {
+                    ...ref.read(treeNodesProvider),
+                    rootNode.label!: [rootNode],
+                  };
+                  final controller = TreeController<TreeNode>(
+                    roots: [rootNode],
+                    childrenProvider: (TreeNode node) => node.children,
+                  );
+                  ref.read(tabDataProvider.notifier).state = {
+                    ...ref.read(tabDataProvider),
+                    rootNode.label!: {
+                      'controller': controller,
+                      'viewType': 'tree',
+                    },
+                  };
+                }
+                Tree_Updater.reciveStreams(client);
+                // Open saved tabs
+                final settings = ref.read(mqttSettingsServiceProvider).value;
+                if (settings != null) {
+                  for (final tab in settings.openTabs) {
+                    final topic = tab['topic'] as String?;
+                    if (topic != null) {
+                      // Find the node by topic
+                      final treeNodes = globalProviderContainer.read(
+                        treeNodesProvider,
+                      );
+                      final root = treeNodes[topic];
+                      if (root != null && root.isNotEmpty) {
+                        final node = root.first;
+                        // Add to tabList
+                        final currentTabs = globalProviderContainer.read(
+                          tabListProvider,
+                        );
+                        if (!currentTabs.contains(node)) {
+                          globalProviderContainer
+                              .read(tabListProvider.notifier)
+                              .state = [
+                            ...currentTabs,
+                            node,
+                          ];
+                          // Create tree controller
+                          final controller = TreeController<TreeNode>(
+                            roots: [node],
+                            childrenProvider: (TreeNode node) => node.children,
+                          );
+                          final tabData = globalProviderContainer.read(
+                            tabDataProvider,
+                          );
+                          globalProviderContainer
+                              .read(tabDataProvider.notifier)
+                              .state = {
+                            ...tabData,
+                            topic: {
+                              'controller': controller,
+                              'viewType': tab['viewType'] ?? 'tree',
+                            },
+                          };
+                        }
                       }
-                    };
+                    }
                   }
                 }
+              } catch (e) {
+                print('⚠️ Error during tab restoration: $e');
               }
+            } else {
+              ref.read(mqttClientProvider.notifier).state =
+                  MqttConnectionState.faulted;
+              print('❌ Connection failed');
+              _showError(ref, 'Connection failed - check host and port');
             }
-          } catch (e) {
-            print('⚠️ Error during tab restoration: $e');
-          }
-        } else {
-          print('❌ Connection failed');
-          _showError(ref, 'Connection failed - check host and port');
-        }
-      }).catchError((error) {
-        print('❌ Connection error: $error');
-        _showError(ref, 'Connection error: $error');
-      });
+          })
+          .catchError((error) {
+            ref.read(mqttClientProvider.notifier).state =
+                MqttConnectionState.faulted;
+            print('❌ Connection error: $error');
+            _showError(ref, 'Connection error: $error');
+          });
     } catch (e) {
       print('❌ Setup error: $e');
       _showError(ref, 'Setup error: $e');
@@ -192,19 +240,17 @@ class SetUpPage extends ConsumerWidget {
             fontSize: 20,
           ),
         ),
-        leading: const Icon(
-          Icons.menu,
-          size: 24,
-        ),
+        leading: const Icon(Icons.menu, size: 24),
         actions: [
           Row(
             children: [
               const Text("Theme"),
               Switch.adaptive(
-                  value: theme.brightness == Brightness.dark,
-                  onChanged: (isDark) {
-                    ref.read(themeProvider.notifier).setDarkMode(isDark);
-                  })
+                value: theme.brightness == Brightness.dark,
+                onChanged: (isDark) {
+                  ref.read(themeServiceProvider.notifier).setDarkMode(isDark);
+                },
+              ),
             ],
           ),
           Padding(
@@ -227,13 +273,14 @@ class SetUpPage extends ConsumerWidget {
             lineWidth: 2,
           ),
           Positioned(
-              bottom: 0.0,
-              right: 0.0,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text("v${ref.watch(versionProvider).toString()}"),
-              )),
-          SetupWidget(startClient: _startClient)
+            bottom: 0.0,
+            right: 0.0,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text("v${ref.watch(versionProvider).toString()}"),
+            ),
+          ),
+          SetupWidget(startClient: _startClient),
         ],
       ),
     );

@@ -119,7 +119,7 @@ class _ListTileState extends State<ListTile> {
   }
 
   // safe call context in build
-  _initExpanded(BuildContext context) {
+  void _initExpanded(BuildContext context) {
     if (!_init) {
       _init = true;
       final jsonConfig = JsonConfig.of(context);

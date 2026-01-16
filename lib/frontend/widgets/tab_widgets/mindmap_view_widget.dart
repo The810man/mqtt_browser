@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graphview/GraphView.dart';
+import 'dart:math' as math;
 import 'package:mqtt_browser/frontend/tree_node.dart';
-import 'dart:math';
 
 class MindmapViewWidget extends ConsumerWidget {
   final TreeNode rootNode;
@@ -10,19 +11,95 @@ class MindmapViewWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final graph = Graph()..isTree = true;
+    final builder = BuchheimWalkerConfiguration()
+      ..siblingSeparation = 30
+      ..levelSeparation = 60
+      ..subtreeSeparation = 30
+      ..orientation = BuchheimWalkerConfiguration.ORIENTATION_TOP_BOTTOM;
+
+    void buildGraph(TreeNode node, Node graphNode) {
+      for (final child in node.children) {
+        final childNode = Node.Id(child);
+        graph.addNode(childNode);
+        graph.addEdge(graphNode, childNode);
+        buildGraph(child, childNode);
+      }
+    }
+
+    final rootGraphNode = Node.Id(rootNode);
+    graph.addNode(rootGraphNode);
+    buildGraph(rootNode, rootGraphNode);
+
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: theme.colorScheme.surface.withValues(alpha: 0.9),
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text('Mindmap View (Radial Layout)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Icon(Icons.hub_rounded, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Mindmap View',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: CustomPaint(
-              painter: MindmapPainter(rootNode: rootNode),
-              child: Container(),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final canvasWidth = math
+                    .max(constraints.maxWidth, 1200)
+                    .toDouble();
+                final canvasHeight = math
+                    .max(constraints.maxHeight, 800)
+                    .toDouble();
+                return ClipRect(
+                  child: InteractiveViewer(
+                    minScale: 0.3,
+                    maxScale: 2.5,
+                    boundaryMargin: const EdgeInsets.all(64),
+                    constrained: false,
+                    child: SizedBox(
+                      width: canvasWidth,
+                      height: canvasHeight,
+                      child: OverflowBox(
+                        alignment: Alignment.topLeft,
+                        minWidth: 0,
+                        minHeight: 0,
+                        maxWidth: double.infinity,
+                        maxHeight: double.infinity,
+                        child: GraphView(
+                          graph: graph,
+                          algorithm: BuchheimWalkerAlgorithm(
+                            builder,
+                            TreeEdgeRenderer(builder),
+                          ),
+                          paint: Paint()
+                            ..color = theme.colorScheme.primary.withValues(
+                              alpha: 0.6,
+                            )
+                            ..strokeWidth = 1.5
+                            ..style = PaintingStyle.stroke,
+                          builder: (Node node) {
+                            final data = node.key?.value as TreeNode?;
+                            return _MindmapNodeCard(
+                              label: data?.label ?? 'Node',
+                              theme: theme,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -31,56 +108,33 @@ class MindmapViewWidget extends ConsumerWidget {
   }
 }
 
-class MindmapPainter extends CustomPainter {
-  final TreeNode rootNode;
+class _MindmapNodeCard extends StatelessWidget {
+  final String label;
+  final ThemeData theme;
 
-  MindmapPainter({required this.rootNode});
+  const _MindmapNodeCard({required this.label, required this.theme});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 3,
+      color: theme.colorScheme.surface.withValues(alpha: 0.95),
+      shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.2),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.primary.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
-
-    // Simple radial layout - root in center, children around it
-    final center = Offset(size.width / 2, size.height / 2);
-    const radius = 100.0;
-
-    // Draw root
-    canvas.drawCircle(center, 30, paint);
-    textPainter.text = TextSpan(
-      text: rootNode.label ?? 'Root',
-      style: const TextStyle(color: Colors.black, fontSize: 12),
-    );
-    textPainter.layout();
-    textPainter.paint(
-        canvas, center - Offset(textPainter.width / 2, textPainter.height / 2));
-
-    // Draw children in a circle
-    final children = rootNode.children;
-    for (int i = 0; i < children.length; i++) {
-      final angle = (i * 2 * pi) / children.length;
-      final childCenter =
-          center + Offset(radius * cos(angle), radius * sin(angle));
-
-      canvas.drawCircle(childCenter, 20, paint);
-      canvas.drawLine(center, childCenter, paint);
-
-      textPainter.text = TextSpan(
-        text: children[i].label ?? 'Child',
-        style: const TextStyle(color: Colors.black, fontSize: 10),
-      );
-      textPainter.layout();
-      textPainter.paint(canvas,
-          childCenter - Offset(textPainter.width / 2, textPainter.height / 2));
-    }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

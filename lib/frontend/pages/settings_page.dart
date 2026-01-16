@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/theme_service.dart';
+import '../../services/theme_service.dart' as theme_service;
 import '../../providers/theme_provider.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -38,7 +38,7 @@ class SettingsPage extends ConsumerWidget {
                 subtitle: const Text('Enable/disable dark theme'),
                 value: theme.brightness == Brightness.dark,
                 onChanged: (value) {
-                  ref.read(themeProvider.notifier).setDarkMode(value);
+                  ref.read(themeServiceProvider.notifier).setDarkMode(value);
                 },
               ),
             ),
@@ -53,11 +53,13 @@ class SettingsPage extends ConsumerWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: ThemeService.presetColors.entries.map((entry) {
+              children: theme_service.ThemeService.presetColors.entries.map((
+                entry,
+              ) {
                 return GestureDetector(
                   onTap: () {
                     ref
-                        .read(themeProvider.notifier)
+                        .read(themeServiceProvider.notifier)
                         .setPrimaryColor(entry.value);
                   },
                   child: Container(
@@ -91,12 +93,14 @@ class SettingsPage extends ConsumerWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: ThemeService.presetColors.entries.map((entry) {
+              children: theme_service.ThemeService.presetColors.entries.map((
+                entry,
+              ) {
                 final lighterColor = entry.value.withValues(alpha: 0.7);
                 return GestureDetector(
                   onTap: () {
                     ref
-                        .read(themeProvider.notifier)
+                        .read(themeServiceProvider.notifier)
                         .setAccentColor(lighterColor);
                   },
                   child: Container(
@@ -125,12 +129,10 @@ class SettingsPage extends ConsumerWidget {
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reset to Defaults'),
                 onPressed: () async {
-                  final service = ThemeService();
-                  await service.init();
                   ref
-                      .read(themeProvider.notifier)
+                      .read(themeServiceProvider.notifier)
                       .setPrimaryColor(const Color(0xFF00BCD4));
-                  ref.read(themeProvider.notifier).setDarkMode(true);
+                  ref.read(themeServiceProvider.notifier).setDarkMode(true);
                 },
               ),
             ),

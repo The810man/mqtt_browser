@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:json_editor/json_editor.dart';
 import 'package:mqtt5_client/mqtt5_client.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
-import 'package:mqtt_browser/main.dart';
 import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
+import 'package:mqtt_browser/providers/ui_state_providers.dart';
 
-class PublishWidget extends ConsumerWidget {
+class PublishWidget extends HookConsumerWidget {
   PublishWidget({super.key, required this.root});
   final TreeNode root;
 
-  void publish(String topic, WidgetRef ref) async {
+  void publish(
+    String topic,
+    WidgetRef ref, {
+    required MqttQos qos,
+    required bool retain,
+  }) async {
     mqSys.clientSubcribe(ref.read(clientProvider)!, topic, 0);
     final builder = MqttPayloadBuilder();
     builder.addString(valueTextController.text);
-    ref.read(clientProvider)!.publishMessage(
-        topic, ref.watch(qos), builder.payload!,
-        retain: ref.watch(retain));
+    ref
+        .read(clientProvider)!
+        .publishMessage(topic, qos, builder.payload!, retain: retain);
   }
 
   final List selectedList = [];
@@ -24,8 +30,6 @@ class PublishWidget extends ConsumerWidget {
   final TextEditingController searchBarTextController = TextEditingController();
   final sideBarScaffholdKey = GlobalKey<ScaffoldState>();
   final String newText = "";
-  final retain = StateProvider<bool>((ref) => false);
-  final qos = StateProvider<MqttQos>((ref) => MqttQos.atMostOnce);
   void initState(WidgetRef ref, context) {
     searchBarTextController.addListener(() {});
     valueTextController.addListener(() {});
@@ -34,7 +38,8 @@ class PublishWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     initState(ref, context);
-    ref.watch(changeIshappeningProvider);
+    final qos = useState(MqttQos.atMostOnce);
+    final retain = useState(false);
     return Container(
       child: Consumer(
         builder: (context, ref, child) {
@@ -44,71 +49,78 @@ class PublishWidget extends ConsumerWidget {
             children: [
               const Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Text(
-                    "Topic",
-                    style: TextStyle(fontSize: 11),
-                  ),
-                ],
+                children: [Text("Topic", style: TextStyle(fontSize: 11))],
               ),
               TextFormField(
-                  //topic input
-                  textAlign: TextAlign.left,
-                  controller: ref.watch(publishTextControllerProvider)),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                //publish bar
-                Container(
-                  decoration: const BoxDecoration(
+                //topic input
+                textAlign: TextAlign.left,
+                controller: ref.watch(publishTextControllerProvider),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  //publish bar
+                  Container(
+                    decoration: const BoxDecoration(
                       border: Border(),
-                      borderRadius: BorderRadius.all(Radius.circular(5))),
-                  child: Column(children: [
-                    const Text("json"),
-                    IconButton(
-                        // Json Button
-                        onPressed: () {},
-                        icon: const Icon(Icons.radio_button_checked)),
-                  ]),
-                ),
+                      borderRadius: BorderRadius.all(Radius.circular(5)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text("json"),
+                        IconButton(
+                          // Json Button
+                          onPressed: () {},
+                          icon: const Icon(Icons.radio_button_checked),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                /// Publish Button
-                ElevatedButton(
-                  onPressed: () {
-                    final snackBar = SnackBar(
+                  /// Publish Button
+                  ElevatedButton(
+                    onPressed: () {
+                      final snackBar = SnackBar(
                         backgroundColor: const Color.fromARGB(69, 0, 255, 13),
                         showCloseIcon: true,
                         content: Center(
                           child: Text(
                             "Published : ${ref.watch(publishTextControllerProvider).text}",
                             style: const TextStyle(
-                                color: Color.fromARGB(255, 2, 43, 0)),
+                              color: Color.fromARGB(255, 2, 43, 0),
+                            ),
                           ),
-                        ));
-                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                    if (ref.watch(publishTextControllerProvider).text == "") {
-                      publish(" ", ref);
-                    } else {
-                      publish(
-                          ref.watch(publishTextControllerProvider).text, ref);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(),
-                  child: const Text(
-                    "Publish",
+                        ),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                      if (ref.watch(publishTextControllerProvider).text == "") {
+                        publish(" ", ref, qos: qos.value, retain: retain.value);
+                      } else {
+                        publish(
+                          ref.watch(publishTextControllerProvider).text,
+                          ref,
+                          qos: qos.value,
+                          retain: retain.value,
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(),
+                    child: const Text("Publish"),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height / 4,
+                  child: JsonEditor.string(
+                    jsonString: ref.watch(currentMessageProvider)[root] ?? "{}",
+                    onValueChanged: (value) {
+                      valueTextController.text = value.toString();
+                    },
                   ),
                 ),
-              ]),
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
-                  child: SizedBox(
-                    height: MediaQuery.of(context).size.height / 4,
-                    child: JsonEditor.string(
-                      jsonString:
-                          ref.watch(currentMessageProvider)[root] ?? "{}",
-                      onValueChanged: (value) {
-                        valueTextController.text = value.toString();
-                      },
-                    ),
-                  )),
+              ),
               Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -120,12 +132,14 @@ class PublishWidget extends ConsumerWidget {
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: DropdownButton(
-                            value: ref.watch(qos),
-                            hint: Text(ref.watch(qos) == MqttQos.atMostOnce
-                                ? "0"
-                                : ref.watch(qos) == MqttQos.atLeastOnce
-                                    ? "1"
-                                    : "2"),
+                            value: qos.value,
+                            hint: Text(
+                              qos.value == MqttQos.atMostOnce
+                                  ? "0"
+                                  : qos.value == MqttQos.atLeastOnce
+                                  ? "1"
+                                  : "2",
+                            ),
                             items: const [
                               DropdownMenuItem(
                                 value: MqttQos.atMostOnce,
@@ -138,10 +152,10 @@ class PublishWidget extends ConsumerWidget {
                               DropdownMenuItem(
                                 value: MqttQos.exactlyOnce,
                                 child: Text("2"),
-                              )
+                              ),
                             ],
                             onChanged: (value) {
-                              ref.read(qos.notifier).state = value!;
+                              qos.value = value!;
                             },
                           ),
                         ),
@@ -150,15 +164,15 @@ class PublishWidget extends ConsumerWidget {
                     Row(
                       children: [
                         Checkbox.adaptive(
-                            value: ref.watch(retain),
-                            onChanged: (value) =>
-                                ref.read(retain.notifier).state = value!),
-                        const Text("Retain")
+                          value: retain.value,
+                          onChanged: (value) => retain.value = value!,
+                        ),
+                        const Text("Retain"),
                       ],
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           );
         },

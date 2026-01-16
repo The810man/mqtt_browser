@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:provider/provider.dart';
 
 class TiledBackground extends StatelessWidget {
   final Widget tile;
@@ -63,7 +60,7 @@ class InfiniteGridBackground extends ConsumerWidget {
           painter: InfiniteGridPainter(
             gridSize: gridSize,
             lineWidth: lineWidth,
-            lineColor: theme.colorScheme.primary.withOpacity(lineOpacity),
+            lineColor: theme.colorScheme.primary.withValues(alpha: lineOpacity),
           ),
         ),
         // Subtle gradient overlay based on theme

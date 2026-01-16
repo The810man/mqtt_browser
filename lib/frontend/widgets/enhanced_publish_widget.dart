@@ -1,17 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mqtt5_client/mqtt5_client.dart';
 import '../tree_node.dart';
-import '../../main.dart';
 import '../../backend/mqtt_sys.dart' as mqSys;
+import 'package:mqtt_browser/providers/ui_state_providers.dart';
 
-final publishQosProvider = StateProvider<MqttQos>((ref) => MqttQos.atMostOnce);
-final publishRetainProvider = StateProvider<bool>((ref) => false);
-final jsonValidationErrorProvider = StateProvider<String?>((ref) => null);
-final publishFormatProvider = StateProvider<String>((ref) => 'json');
-
-class EnhancedPublishWidget extends ConsumerWidget {
+class EnhancedPublishWidget extends HookConsumerWidget {
   final TreeNode root;
 
   const EnhancedPublishWidget({super.key, required this.root});
@@ -72,7 +68,7 @@ class EnhancedPublishWidget extends ConsumerWidget {
   void _publishMessage(BuildContext context, WidgetRef ref) {
     final topicController = ref.read(publishTextControllerProvider);
     final topic = topicController.text;
-    final payload = ref.read(currentMessageProvider)[root] ?? '{}';
+    final payload = ref.read(currentMessageProvider)[root] ?? '';
     final format = ref.read(publishFormatProvider);
     final qos = ref.read(publishQosProvider);
     final retain = ref.read(publishRetainProvider);
@@ -90,21 +86,22 @@ class EnhancedPublishWidget extends ConsumerWidget {
       return;
     }
 
+    final client = ref.read(clientProvider);
+    if (client == null) {
+      _showError(context, 'Publish failed: not connected');
+      return;
+    }
+
     try {
       // Subscribe first to receive our own message (if broker supports)
-      mqSys.clientSubcribe(ref.read(clientProvider)!, topic, 0);
+      mqSys.clientSubcribe(client, topic, 0);
 
       // Prepare payload
       final builder = MqttPayloadBuilder();
       builder.addString(payload);
 
       // Publish with error handling
-      ref.read(clientProvider)!.publishMessage(
-            topic,
-            qos,
-            builder.payload!,
-            retain: retain,
-          );
+      client.publishMessage(topic, qos, builder.payload!, retain: retain);
 
       _showSuccess(context, 'Published to: $topic');
     } catch (e) {
@@ -122,8 +119,8 @@ class EnhancedPublishWidget extends ConsumerWidget {
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(
-                child:
-                    Text(message, style: const TextStyle(color: Colors.white))),
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
       ),
@@ -140,8 +137,8 @@ class EnhancedPublishWidget extends ConsumerWidget {
             const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 8),
             Expanded(
-                child:
-                    Text(message, style: const TextStyle(color: Colors.white))),
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
       ),
@@ -151,10 +148,18 @@ class EnhancedPublishWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topic = ref.watch(publishTextControllerProvider).text;
+    final format = ref.watch(publishFormatProvider);
     final qos = ref.watch(publishQosProvider);
     final retain = ref.watch(publishRetainProvider);
-    final format = ref.watch(publishFormatProvider);
-    final payload = ref.watch(currentMessageProvider)[root] ?? '{}';
+    final payload = ref.watch(currentMessageProvider)[root] ?? '';
+    final payloadController = useTextEditingController(text: payload);
+    useEffect(() {
+      payloadController.text = payload;
+      payloadController.selection = TextSelection.fromPosition(
+        TextPosition(offset: payloadController.text.length),
+      );
+      return null;
+    }, [root, payload]);
     final payloadError = _validatePayload(payload, format);
 
     return Column(
@@ -168,9 +173,9 @@ class EnhancedPublishWidget extends ConsumerWidget {
             children: [
               Text(
                 'Topic',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
               TextField(
@@ -179,9 +184,12 @@ class EnhancedPublishWidget extends ConsumerWidget {
                   hintText: 'e.g., home/temperature/sensor1',
                   prefixIcon: const Icon(Icons.topic),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                 ),
               ),
             ],
@@ -200,8 +208,8 @@ class EnhancedPublishWidget extends ConsumerWidget {
                   Text(
                     '${format.toUpperCase()} Payload',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Row(
                     children: [
@@ -222,11 +230,18 @@ class EnhancedPublishWidget extends ConsumerWidget {
                       const SizedBox(width: 8),
                       if (payloadError != null)
                         Chip(
-                          avatar: const Icon(Icons.warning,
-                              size: 16, color: Colors.white),
-                          label: Text(payloadError,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 11)),
+                          avatar: const Icon(
+                            Icons.warning,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            payloadError,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
+                          ),
                           backgroundColor: Colors.red.shade600,
                         ),
                     ],
@@ -246,13 +261,13 @@ class EnhancedPublishWidget extends ConsumerWidget {
                 ),
                 child: TextField(
                   maxLines: 5,
-                  controller: TextEditingController(text: payload),
+                  controller: payloadController,
                   decoration: InputDecoration(
                     hintText: format == 'json'
                         ? '{"key": "value"}'
                         : format == 'xml'
-                            ? '<root><element>value</element></root>'
-                            : 'Plain text message',
+                        ? '<root><element>value</element></root>'
+                        : 'Plain text message',
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(8),
                     filled: true,
@@ -262,6 +277,7 @@ class EnhancedPublishWidget extends ConsumerWidget {
                   ),
                   onChanged: (value) {
                     ref.read(currentMessageProvider.notifier).state = {
+                      ...ref.read(currentMessageProvider.notifier).state,
                       root: value,
                     };
                   },
@@ -286,9 +302,13 @@ class EnhancedPublishWidget extends ConsumerWidget {
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
-                        const Text('QoS Level',
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'QoS Level',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         DropdownButton<MqttQos>(
                           value: qos,
@@ -327,9 +347,13 @@ class EnhancedPublishWidget extends ConsumerWidget {
                   padding: const EdgeInsets.all(8.0),
                   child: Column(
                     children: [
-                      const Text('Retain',
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Retain',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Switch(
                         value: retain,
@@ -356,8 +380,10 @@ class EnhancedPublishWidget extends ConsumerWidget {
             height: 48,
             child: ElevatedButton.icon(
               icon: const Icon(Icons.send),
-              label: const Text('Publish Message',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Publish Message',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
               onPressed: payloadError == null && topic.isNotEmpty
                   ? () => _publishMessage(context, ref)
                   : null,

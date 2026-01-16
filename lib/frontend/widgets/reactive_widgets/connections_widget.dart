@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mqtt_browser/frontend/widgets/reactive_widgets/setup_widget.dart';
-import 'package:mqtt_browser/main.dart';
-import 'package:mqtt_browser/services/mqtt_settings_service.dart';
-import 'package:mqtt_browser/providers/theme_provider.dart';
+import 'package:mqtt_browser/providers/providers.dart';
+import 'package:mqtt_browser/models/mqtt_settings.dart';
 
 class ConnectionsWidget extends ConsumerWidget {
   const ConnectionsWidget({
@@ -29,13 +27,13 @@ class ConnectionsWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ref.watch(themeProvider);
-    final connections = ref.watch(fileProvider);
+    final connections = ref.watch(connectionsEntriesProvider);
 
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.colorScheme.surface.withValues(alpha: 0.8),
         border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -60,8 +58,8 @@ class ConnectionsWidget extends ConsumerWidget {
                     Text(
                       'Saved Connections',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -70,7 +68,7 @@ class ConnectionsWidget extends ConsumerWidget {
                   icon: const Icon(Icons.palette),
                   tooltip: 'Theme settings',
                   onPressed: () {
-                    ref.read(routerProvider).go('/settings');
+                    ref.read(routerProvider).push('/settings');
                   },
                 ),
               ],
@@ -144,148 +142,160 @@ class ConnectionsWidget extends ConsumerWidget {
                                     icon: const Icon(Icons.edit, size: 18),
                                     onPressed: () async {
                                       // open edit dialog
-                                      final edited = await showDialog<
-                                              Map<String, dynamic>>(
-                                          context: context,
-                                          builder: (ctx) {
-                                            final nameController =
-                                                TextEditingController(
-                                                    text: connection['name']
-                                                            ?.toString() ??
-                                                        host);
-                                            final hostController =
-                                                TextEditingController(
-                                                    text: host);
-                                            final portController =
-                                                TextEditingController(
-                                                    text: port.toString());
-                                            String selectedIcon =
-                                                connection['icon'] ?? 'cloud';
-                                            return StatefulBuilder(
-                                              builder: (context, setState) =>
-                                                  AlertDialog(
-                                                title: const Text(
-                                                    'Edit Connection'),
-                                                content: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    TextField(
-                                                        controller:
-                                                            nameController,
-                                                        decoration:
-                                                            const InputDecoration(
-                                                                labelText:
-                                                                    'Name')),
-                                                    TextField(
-                                                        controller:
-                                                            hostController,
-                                                        decoration:
-                                                            const InputDecoration(
-                                                                labelText:
-                                                                    'Host')),
-                                                    TextField(
-                                                        controller:
-                                                            portController,
-                                                        decoration:
-                                                            const InputDecoration(
-                                                                labelText:
-                                                                    'Port'),
-                                                        keyboardType:
-                                                            TextInputType
-                                                                .number),
-                                                    DropdownButtonFormField<
-                                                        String>(
-                                                      value: selectedIcon,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                              labelText:
-                                                                  'Icon'),
-                                                      items: const [
-                                                        DropdownMenuItem(
-                                                            value: 'cloud',
-                                                            child:
-                                                                Text('Cloud')),
-                                                        DropdownMenuItem(
-                                                            value: 'router',
-                                                            child:
-                                                                Text('Router')),
-                                                        DropdownMenuItem(
-                                                            value: 'settings',
-                                                            child: Text(
-                                                                'Settings')),
-                                                      ],
-                                                      onChanged: (value) =>
-                                                          setState(() =>
-                                                              selectedIcon =
-                                                                  value!),
-                                                    ),
-                                                  ],
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.of(ctx)
-                                                              .pop(),
-                                                      child:
-                                                          const Text('Cancel')),
-                                                  FilledButton(
-                                                      onPressed: () {
-                                                        Navigator.of(ctx).pop({
-                                                          'name': nameController
-                                                              .text,
-                                                          'host': hostController
-                                                              .text,
-                                                          'port': int.tryParse(
-                                                                  portController
-                                                                      .text) ??
-                                                              port,
-                                                          'icon': selectedIcon,
-                                                          'settings': connection[
-                                                                  'settings'] ??
-                                                              {},
-                                                        });
-                                                      },
-                                                      child:
-                                                          const Text('Save')),
+                                      final edited = await showDialog<Map<String, dynamic>>(
+                                        context: context,
+                                        builder: (ctx) {
+                                          final nameController =
+                                              TextEditingController(
+                                                text:
+                                                    connection['name']
+                                                        ?.toString() ??
+                                                    host,
+                                              );
+                                          final hostController =
+                                              TextEditingController(text: host);
+                                          final portController =
+                                              TextEditingController(
+                                                text: port.toString(),
+                                              );
+                                          String selectedIcon =
+                                              connection['icon'] ?? 'cloud';
+                                          return StatefulBuilder(
+                                            builder: (context, setState) => AlertDialog(
+                                              title: const Text(
+                                                'Edit Connection',
+                                              ),
+                                              content: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  TextField(
+                                                    controller: nameController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText: 'Name',
+                                                        ),
+                                                  ),
+                                                  TextField(
+                                                    controller: hostController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText: 'Host',
+                                                        ),
+                                                  ),
+                                                  TextField(
+                                                    controller: portController,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText: 'Port',
+                                                        ),
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                  ),
+                                                  DropdownButtonFormField<
+                                                    String
+                                                  >(
+                                                    value: selectedIcon,
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          labelText: 'Icon',
+                                                        ),
+                                                    items: const [
+                                                      DropdownMenuItem(
+                                                        value: 'cloud',
+                                                        child: Text('Cloud'),
+                                                      ),
+                                                      DropdownMenuItem(
+                                                        value: 'router',
+                                                        child: Text('Router'),
+                                                      ),
+                                                      DropdownMenuItem(
+                                                        value: 'settings',
+                                                        child: Text('Settings'),
+                                                      ),
+                                                    ],
+                                                    onChanged: (value) =>
+                                                        setState(
+                                                          () => selectedIcon =
+                                                              value!,
+                                                        ),
+                                                  ),
                                                 ],
                                               ),
-                                            );
-                                          });
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(ctx).pop(),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                FilledButton(
+                                                  onPressed: () {
+                                                    Navigator.of(ctx).pop({
+                                                      'name':
+                                                          nameController.text,
+                                                      'host':
+                                                          hostController.text,
+                                                      'port':
+                                                          int.tryParse(
+                                                            portController.text,
+                                                          ) ??
+                                                          port,
+                                                      'icon': selectedIcon,
+                                                      'settings':
+                                                          connection['settings'] ??
+                                                          {},
+                                                    });
+                                                  },
+                                                  child: const Text('Save'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      );
                                       if (edited != null) {
                                         ref
-                                            .read(fileProvider.notifier)
-                                            .updateEntryAt(index, edited);
-                                        ref
-                                            .read(fileProvider.notifier)
-                                            .setConnections(ref);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(const SnackBar(
-                                                content: Text(
-                                                    'Connection updated')));
+                                            .read(
+                                              connectionsEntriesProvider
+                                                  .notifier,
+                                            )
+                                            .updateAt(index, edited);
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Connection updated'),
+                                          ),
+                                        );
                                       }
                                     },
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 40),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 40,
+                                    ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        size: 18, color: Colors.red),
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      size: 18,
+                                      color: Colors.red,
+                                    ),
                                     onPressed: () {
                                       // delete
                                       ref
-                                          .read(fileProvider.notifier)
-                                          .removeEntryAt(index);
-                                      ref
-                                          .read(fileProvider.notifier)
-                                          .setConnections(ref);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content:
-                                                  Text('Connection removed')));
+                                          .read(
+                                            connectionsEntriesProvider.notifier,
+                                          )
+                                          .removeAt(index);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Connection removed'),
+                                        ),
+                                      );
                                     },
-                                    constraints:
-                                        const BoxConstraints(maxWidth: 40),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 40,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -293,16 +303,20 @@ class ConnectionsWidget extends ConsumerWidget {
                             onTap: () {
                               // apply connection - also restore settings if exist
                               ref.read(hostProvider.notifier).state = host;
-                              ref.read(portProvider.notifier).state =
-                                  port.toString();
+                              ref.read(portProvider.notifier).state = port
+                                  .toString();
                               if (connection.containsKey('settings')) {
                                 try {
                                   final settingsMap = Map<String, dynamic>.from(
-                                      connection['settings']);
+                                    connection['settings'],
+                                  );
                                   ref
-                                      .read(mqttSettingsProvider.notifier)
+                                      .read(
+                                        mqttSettingsServiceProvider.notifier,
+                                      )
                                       .updateSettings(
-                                          MqttSettings.fromJson(settingsMap));
+                                        MqttSettings.fromJson(settingsMap),
+                                      );
                                 } catch (e) {
                                   // ignore malformed settings
                                 }

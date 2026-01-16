@@ -1,15 +1,21 @@
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:mqtt_browser/frontend/widgets/tree_nodes_widget.dart';
-import 'package:mqtt_browser/main.dart';
+import 'package:mqtt_browser/providers/providers.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final blinkTimeProvider = StateProvider<Map<TreeNode?, DateTime?>>((ref) {
-  return {};
-});
+part 'smooth_blink_widget.g.dart';
+
+@riverpod
+class BlinkTime extends _$BlinkTime {
+  @override
+  Map<TreeNode?, DateTime?> build() => {};
+
+  void set(Map<TreeNode?, DateTime?> value) => state = value;
+}
 
 class SmoothHighlight extends HookConsumerWidget {
   const SmoothHighlight({
@@ -42,7 +48,7 @@ class SmoothHighlight extends HookConsumerWidget {
   /// The padding of the highlight.
   final EdgeInsets padding;
 
-  validateNode(WidgetRef ref) {
+  bool validateNode(WidgetRef ref) {
     TreeNode node = ref.watch(currentNodeProvider).node;
     Map<TreeNode?, DateTime?> nodeTimeMap = ref.watch(blinkTimeProvider);
     if (nodeTimeMap.isEmpty) {
@@ -71,53 +77,48 @@ class SmoothHighlight extends HookConsumerWidget {
     final prevMessageCount = useRef(node.messageCount);
 
     useEffect(() {
-      if (node.messageCount > prevMessageCount.value) {
-        animationController.forward(from: 0);
+      if (context.mounted) {
+        if (node.messageCount > prevMessageCount.value) {
+          animationController.forward(from: 0);
+        }
+        prevMessageCount.value = node.messageCount;
+        return null;
       }
-      prevMessageCount.value = node.messageCount;
       return null;
     }, [node.messageCount]);
 
-    final Animation<Decoration> startAnimation = animationController
-        .drive(
-          CurveTween(curve: Curves.easeInOut),
-        )
-        .drive(DecorationTween(
-          begin: const BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.transparent,
-                spreadRadius: 0,
-                blurRadius: 3,
+    final Animation<Decoration> startAnimation =
+        animationController
+            .drive(CurveTween(curve: Curves.easeInOut))
+            .drive(
+              DecorationTween(
+                begin: const BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.transparent,
+                      spreadRadius: 0,
+                      blurRadius: 3,
+                    ),
+                  ],
+                ),
+                end: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: color),
+                  boxShadow: [
+                    BoxShadow(color: color, spreadRadius: 0, blurRadius: 3),
+                  ],
+                ),
               ),
-            ],
-          ),
-          end: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: color,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: color,
-                spreadRadius: 0,
-                blurRadius: 3,
-              ),
-            ],
-          ),
-        ))
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          animationController.reverse();
-        }
-      });
+            )
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              animationController.reverse();
+            }
+          });
 
     return DecoratedBoxTransition(
       decoration: startAnimation,
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 }

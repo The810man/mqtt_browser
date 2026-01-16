@@ -3,9 +3,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mqtt_browser/main.dart';
 import '../models/data_point.dart';
 import '../widgets/simple_line_chart.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 
 final graphDataProvider = Provider((ref) => GraphData());
 
@@ -13,7 +13,10 @@ class GraphData {
   late List<DataPoint> data;
 
   void updateChart(
-      String jsonData, List<String> historyList, String subValueKey) {
+    String jsonData,
+    List<String> historyList,
+    String subValueKey,
+  ) {
     data = [];
 
     // Function to extract sub-value from JSON object
@@ -63,12 +66,13 @@ class Testgraphviewpage extends ConsumerWidget {
   final String subValueKey;
   final String title;
 
-  Testgraphviewpage(
-      {super.key,
-      required this.subValueKey,
-      required this.title,
-      required this.jsonData,
-      required this.historyList});
+  Testgraphviewpage({
+    super.key,
+    required this.subValueKey,
+    required this.title,
+    required this.jsonData,
+    required this.historyList,
+  });
   final jsonData;
   final historyList;
   late List<DataPoint> data;
@@ -80,16 +84,14 @@ class Testgraphviewpage extends ConsumerWidget {
     graphData.updateChart(jsonData, historyList, subValueKey);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('$title Graph View'),
-      ),
+      appBar: AppBar(title: Text('$title Graph View')),
       body: Center(
         child: SizedBox(
           width: 900,
           child: SingleChildScrollView(
             child: Column(
               children: [
-                SimpleLineChart(data: graphData.data, title: '$title'),
+                SimpleLineChart(data: graphData.data, title: title),
               ],
             ),
           ),
