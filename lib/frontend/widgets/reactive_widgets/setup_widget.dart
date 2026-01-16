@@ -1,88 +1,64 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/frontend/widgets/reactive_widgets/connections_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/reactive_widgets/settings_widget.dart';
-import 'package:mqtt_browser/main.dart';
-
-class FileNotifier extends StateNotifier<List<Map<String, dynamic>>> {
-  FileNotifier() : super([]);
-
-  void setConnections(ref) async {
-    await ref.read(sharedPreferencesProvider)!.setString(
-        SharedPreferenceKey.connections.stringValue,
-        jsonEncode(state).toString());
-  }
-
-  void getConnections(ref) {
-    final data = ref
-        .read(sharedPreferencesProvider)!
-        .getString(SharedPreferenceKey.connections.stringValue);
-    if (data == null) {
-      addEntry([
-        {"host": "localhost", "port": 1883}
-      ]);
-    } else {
-      addEntry(jsonDecode(data));
-    }
-    setConnections(ref);
-  }
-
-  void addEntry(entry) {
-    state = [...state, ...entry];
-  }
-}
-
-final fileProvider =
-    StateNotifierProvider<FileNotifier, List<Map<String, dynamic>>>((ref) {
-  return FileNotifier()..getConnections(ref);
-});
 
 class SetupWidget extends ConsumerWidget {
-  const SetupWidget(
-      {super.key,
-      required this.hostTextController,
-      required this.portTextController,
-      required this.startClient});
-  final TextEditingController hostTextController;
-  final TextEditingController portTextController;
+  const SetupWidget({super.key, required this.startClient});
   final ValueChanged<WidgetRef> startClient;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentWidth = MediaQuery.of(context).size.width;
-    //ref.watch(fileProvider);
-    return Center(
-        child: currentWidth > 750
-            ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                ConnectionsWidget(
-                  hostTextController: hostTextController,
-                  portTextController: portTextController,
-                  height: 380,
-                  width: 250,
-                ),
-                SetupSettings(
-                  hostTextController: hostTextController,
-                  portTextController: portTextController,
-                  startClient: (val) => startClient(ref),
-                  width: 380,
-                  height: 380,
-                )
-              ])
-            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                SetupSettings(
-                  hostTextController: hostTextController,
-                  portTextController: portTextController,
-                  startClient: (val) => startClient(ref),
-                  width: 380,
-                  height: 380,
-                ),
-                ConnectionsWidget(
-                  hostTextController: hostTextController,
-                  portTextController: portTextController,
-                  height: 250,
-                  width: 380,
-                )
-              ]));
+    final currentHeight = MediaQuery.of(context).size.height;
+
+    if (currentWidth > 900) {
+      // Wide screen: side by side
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            // Left side - connections
+            Expanded(
+              child: ConnectionsWidget(
+                height: currentHeight - 120,
+                width: double.infinity,
+              ),
+            ),
+            const SizedBox(width: 24),
+            // Right side - settings
+            Expanded(
+              child: SetupSettings(
+                startClient: startClient,
+                width: double.infinity,
+                height: currentHeight - 120,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Narrow screen: stacked
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Settings at top
+            Expanded(
+              child: SetupSettings(
+                startClient: startClient,
+                width: double.infinity,
+                height: 300,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Connections at bottom
+            Expanded(
+              child: ConnectionsWidget(height: 300, width: double.infinity),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }

@@ -26,7 +26,7 @@ class _MapTileState extends State<MapTile> {
   bool _init = false;
   bool _expanded = false;
 
-  _changeState() {
+  void _changeState() {
     if (mounted && widget.items.isNotEmpty) {
       setState(() {
         _expanded = !_expanded;
@@ -41,7 +41,7 @@ class _MapTileState extends State<MapTile> {
   }
 
   // safe call context in build
-  _initExpanded(BuildContext context) {
+  void _initExpanded(BuildContext context) {
     if (!_init) {
       _init = true;
       final jsonConfig = JsonConfig.of(context);

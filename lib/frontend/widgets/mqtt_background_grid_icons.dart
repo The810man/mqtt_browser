@@ -11,8 +11,9 @@
 ///      fonts:
 ///       - asset: fonts/MqttBackgroundGrid.ttf
 ///
-/// 
 ///
+///
+library;
 import 'package:flutter/widgets.dart';
 
 class MqttBackgroundGrid {
@@ -21,5 +22,6 @@ class MqttBackgroundGrid {
   static const _kFontFam = 'MqttBackgroundGrid';
   static const String? _kFontPkg = null;
 
-  static const IconData unbetitelt_2 = IconData(0xe81c, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData unbetitelt_2 =
+      IconData(0xe81c, fontFamily: _kFontFam, fontPackage: _kFontPkg);
 }

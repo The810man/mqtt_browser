@@ -1,107 +1,149 @@
-# MQTT Browser by 810
-A Standalone Browser application for the MQTT system
+# MQTT Browser
 
-## Description
+A modern, standalone Flutter application for browsing and interacting with MQTT topic trees.
 
-The MQTT-Browser is an App designed to visualize MQTT topic trees.
-The MQTT-Browser uses a Tree-Structure like System to help you organize all of your Topics. You can view multiple Topics in an Tab-view and switch between them.
+## Features
 
-## Docker
-
-To run MQTT-Browser within docker the container needs access to `X` server.
-
-Type `xhost` to see the authorized clients
-
-```bash
-$ xhost
-access control enabled, only authorized clients can connect
-SI:localuser:<your user name>
-```
-
-Normally your user should be allowed to access `X`, so the user and group id of the container needs to be set to your user
-and group id. (see `--user=...`. Also, the `X` socket needs to be mounted into the container and the `DISPLAY` variable is
-required:
-
-```bash
-docker run -it --rm -v /tmp/.X11-unix/:/tmp/.X11-unix --user=$(id -u):$(id -g) -e DISPLAY=$DISPLAY \
-  https://github.com/The810man/mqtt_browser.git:latest
-```
-
-To access a MQTT broker on the host machine, enter the host machines IP address instead of `localhost`.
+- **MQTT Connection Management**: Connect to MQTT brokers with advanced settings (TLS, authentication, keep-alive, etc.)
+- **Topic Tree Visualization**: Interactive tree view of MQTT topics with expand/collapse functionality
+- **Real-time Data Display**: View live MQTT messages in tabbed interface
+- **Publishing**: Send MQTT messages with JSON support, QoS levels, and retain options
+- **Subscription Management**: Auto-subscribe to topics on connect, manual subscribe/unsubscribe
+- **Saved Connections**: Save and load connection presets with custom icons
+- **Charts & Analytics**: Visualize numeric data with interactive charts
+- **Theme Support**: Dark/light mode with customizable themes
+- **Data Export**: Export topic tree data to JSON/CSV for analysis
 
 ## Installation
 
-### Linux
+### Building from Source
 
-To Install the MQTT-Browser on your Linux machine
-you will need to get the .zip File which contains a .deb and
-another .zip which contains the direct launch file.
+1. Ensure you have Flutter installed: <https://flutter.dev/docs/get-started/install>
+2. Clone the repository:
 
-To Run the App via the executable File:
+   ```bash
+   git clone https://github.com/your-repo/mqtt_browser.git
+   cd mqtt_browser
+   ```
 
-- extract the .zip into a folder
-- open a Terminal in that folder
-- type in the following command
+3. Install dependencies:
 
-```bash
-chmod u+x [filename]
-```
+   ```bash
+   flutter pub get
+   ```
 
-To Install the .deb file to your System:
+4. Run the app:
 
-- open a Terminal on where the .deb file is located
-- type in the following command
+   ```bash
+   flutter run
+   ```
 
-```bash
-sudo dpkg -i [filename].deb
-```
+5. Build for your platform:
 
-- make sure to replace "fileName" with the actual Name
+   ```bash
+   flutter build linux  # or windows, macos, etc.
+   ```
 
-### Mqtt-Browser on Steam or Itch.io
+### Pre-built Binaries
 
-If you dont want to use git or build the app on youre own etc.
-Get youre self the App on Steam: [Not available]
-Or on Itch.io [Not available]
+Download the latest release from the releases page.
 
 ## Usage
 
-### Connections
+### Getting Started
 
-- Save and load the Broker connection settings via the client Setup Page
-- Input your Brokers Ip and Port then hit Connect
+1. Launch the app
+2. On the setup page, enter your MQTT broker details (host, port)
+3. Configure advanced settings if needed (TLS, authentication, subscriptions)
+4. Click "Connect"
 
-### Tree-View
+### Connection Settings
 
-- Click on Nodes to Expand/Collapse them
-- Selected Nodes have a Boreder arround them
-- If a node is selected the menu button shows on the nodes right side
-- use the nodes menu button to open the selected node on a new Tab or more
+- **Basic**: Host, port, client ID
+- **Authentication**: Username/password
+- **Security**: TLS/SSL options
+- **Advanced**: Keep-alive, connection timeout, clean session
+- **Subscriptions**: Auto-subscribe topics with QoS levels
 
-### Tools
+### Saved Connections
 
-- on the Right side are the Tools like the Publish tool
-- you can open and close those tools
-- to Publish enter the Topic-string and hit publish
-- you can send json data via the Text-field
-- set the QoS level and check if the topic should be retained
-- if a topic is selected then the values will show on the value tool
-- all parent topics will be displayed and can be copied and deleted via the Topic tool on the Top
+- Save connection presets for quick access
+- Customize connection icons
+- Edit/delete saved connections
 
-### Tabs
+### Topic Tree
 
-- Every Tab except the host Tab can be closed
-- Tabs also have a little tool button
-- Tab tools can search/ expand and collaps all nodes
-- to search for nodes/ topics just click on the search icon
+- Browse MQTT topics in a hierarchical tree
+- Expand/collapse nodes
+- Open topics in tabs for detailed viewing
+- Search topics
+- Export tree data to JSON file
 
-### Disconnect
+### Publishing Messages
 
-- On the upper right side is a Disconnect button
-- Press the Button to disconnect from the broker
-- after disconnecting you will be send back to the client setup page
+- Enter topic and payload (supports JSON)
+- Set QoS level (0, 1, 2)
+- Retain message option
+- Send button
 
-### Misc
+### Charts
 
-- On the upper left side you will find the settings tab
-- On the Settings tab you will find Tree-View settings and a Dark mode button
+- View numeric data as line charts
+- Interactive zooming and panning
+- Multiple chart types supported
+
+### Settings
+
+- Theme selection (dark/light)
+- Tree view preferences
+- Connection defaults
+
+## Troubleshooting
+
+### Connection Issues
+
+- Verify broker host and port
+- Check network connectivity
+- Ensure MQTT broker allows connections from your IP
+- For TLS, verify certificates are properly configured
+
+### Performance
+
+- Large topic trees may impact performance
+- Use search to filter topics
+- Close unused tabs
+
+### Common Errors
+
+- "Connection refused": Check broker is running and accessible
+- "Authentication failed": Verify username/password
+- "TLS handshake failed": Check certificate configuration
+
+## Development
+
+### Prerequisites
+
+- Flutter 3.0+
+- Dart 3.0+
+
+### Project Structure
+
+- `lib/backend/`: MQTT connection logic
+- `lib/frontend/`: UI components and pages
+- `lib/services/`: Data persistence and settings
+- `lib/providers/`: State management
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+Built with Flutter and MQTT5 client library.

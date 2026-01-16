@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mqtt_browser/main.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 import '../models/json_color_scheme.dart';
 import '../models/json_style_scheme.dart';
 import '../painters/value_background_painter.dart';
@@ -10,25 +10,17 @@ import 'json_config.dart';
 typedef SpanBuilder = InlineSpan Function(BuildContext context, dynamic value);
 
 class ColonSpan extends TextSpan {
-  const ColonSpan({
-    super.style,
-  }) : super(text: ' : ');
+  const ColonSpan({super.style}) : super(text: ' : ');
 }
 
 class KeySpan extends TextSpan {
   final String keyValue;
-  const KeySpan({
-    required this.keyValue,
-    super.style,
-  }) : super(text: keyValue);
+  const KeySpan({required this.keyValue, super.style}) : super(text: keyValue);
 }
 
 class ValueSpan extends TextSpan {
   final String value;
-  const ValueSpan({
-    required this.value,
-    super.style,
-  }) : super(text: value);
+  const ValueSpan({required this.value, super.style}) : super(text: value);
 }
 
 class KeyValueTile extends ConsumerWidget {
@@ -90,8 +82,9 @@ class KeyValueTile extends ConsumerWidget {
         style: keyStyle(context).copyWith(color: cs.normalColor ?? Colors.grey),
       ),
       ColonSpan(
-        style:
-            keyStyle(context).copyWith(color: cs.markColor ?? Colors.white70),
+        style: keyStyle(
+          context,
+        ).copyWith(color: cs.markColor ?? Colors.white70),
       ),
       buildValue(context),
     ];
@@ -103,25 +96,26 @@ class KeyValueTile extends ConsumerWidget {
     );
     if (leading == null) {
       result = Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () {
-                  ref.watch(selectedItemProvider);
-                  // Navigator.of(context).push(MaterialPageRoute(
-                  //     builder: (context) => Testgraphviewpage(
-                  //           subValueKey: keyName,
-                  //           title: keyName,
-                  //         )));
-                },
-                icon: const Icon(Icons.auto_graph_outlined),
-                iconSize: 15,
-                constraints: const BoxConstraints(maxHeight: 30, maxWidth: 30),
-              ),
-              result,
-            ],
-          ));
+        padding: const EdgeInsets.only(left: 16),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                ref.watch(selectedItemProvider);
+                // Navigator.of(context).push(MaterialPageRoute(
+                //     builder: (context) => Testgraphviewpage(
+                //           subValueKey: keyName,
+                //           title: keyName,
+                //         )));
+              },
+              icon: const Icon(Icons.auto_graph_outlined),
+              iconSize: 15,
+              constraints: const BoxConstraints(maxHeight: 30, maxWidth: 30),
+            ),
+            result,
+          ],
+        ),
+      );
     } else {
       result = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,12 +131,7 @@ class KeyValueTile extends ConsumerWidget {
 }
 
 class NullTile extends KeyValueTile {
-  const NullTile({
-    super.key,
-    required super.keyName,
-  }) : super(
-          value: 'null',
-        );
+  const NullTile({super.key, required super.keyName}) : super(value: 'null');
 
   @override
   Color valueColor(BuildContext context) =>
@@ -177,13 +166,8 @@ class NullTile extends KeyValueTile {
 }
 
 class NumTile extends KeyValueTile {
-  const NumTile({
-    super.key,
-    required super.keyName,
-    required num value,
-  }) : super(
-          value: '$value',
-        );
+  const NumTile({super.key, required super.keyName, required num value})
+    : super(value: '$value');
 
   @override
   Color valueColor(BuildContext context) =>
@@ -191,13 +175,8 @@ class NumTile extends KeyValueTile {
 }
 
 class BoolTile extends KeyValueTile {
-  const BoolTile({
-    super.key,
-    required super.keyName,
-    required bool value,
-  }) : super(
-          value: '$value',
-        );
+  const BoolTile({super.key, required super.keyName, required bool value})
+    : super(value: '$value');
 
   @override
   Color valueColor(BuildContext context) =>
@@ -213,10 +192,10 @@ class MapListTile extends KeyValueTile {
     required bool showLeading,
     required bool expanded,
   }) : super(
-          leading: showLeading
-              ? ArrowWidget(expanded: expanded, onTap: onTap)
-              : null,
-        );
+         leading: showLeading
+             ? ArrowWidget(expanded: expanded, onTap: onTap)
+             : null,
+       );
 
   @override
   Color valueColor(BuildContext context) {

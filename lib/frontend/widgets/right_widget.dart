@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
-import 'package:mqtt_browser/frontend/widgets/publish_widget.dart';
-import 'package:mqtt_browser/main.dart';
+import 'package:mqtt_browser/frontend/widgets/enhanced_publish_widget.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 import 'package:json_view/json_view.dart';
 import 'package:mqtt_browser/frontend/custom_json_view/custom_json_view.dart';
 import 'dart:convert';
@@ -23,7 +23,7 @@ class ValuesWidget extends ConsumerWidget {
     return true;
   }
 
-  makeStringFromList(List TopicList, WidgetRef ref) {
+  String makeStringFromList(List TopicList, WidgetRef ref) {
     String OutputString = "";
     for (var topic in TopicList.reversed) {
       if (OutputString == "") {
@@ -35,8 +35,11 @@ class ValuesWidget extends ConsumerWidget {
     return OutputString;
   }
 
-  makeParentsList(
-      TreeNode InputNode, List<TreeNode> OutputList, WidgetRef ref) {
+  dynamic makeParentsList(
+    TreeNode InputNode,
+    List<TreeNode> OutputList,
+    WidgetRef ref,
+  ) {
     if (!OutputList.contains(InputNode)) {
       if (InputNode == ref.watch(currentRootProvider)) {
         return OutputList;
@@ -61,27 +64,32 @@ class ValuesWidget extends ConsumerWidget {
       newState.remove(nodes);
     }
     ref.read(treeNodesProvider.notifier).state = newState;
-    ref
-        .read(tabDataProvider)["${ref.watch(currentRootProvider).label}"]!
-        .rebuild();
+    final controller =
+        ref.read(
+              tabDataProvider,
+            )["${ref.watch(currentRootProvider).label}"]?['controller']
+            as dynamic;
+    controller?.rebuild();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(changeIshappeningProvider);
     ref.watch(selectedItemProvider);
-    List<TreeNode> topicsList = makeParentsList(
-        ref.watch(selectedItemProvider)[ref.watch(currentRootProvider).label]!,
-        [],
-        ref);
+    final currentRoot = ref.watch(currentRootProvider);
+    final currentRootLabel = currentRoot.label;
+    final selectedItem = ref.watch(selectedItemProvider)[currentRootLabel];
+    final nodesList = ref.watch(treeNodesProvider)[currentRootLabel];
+    if (currentRootLabel == null || selectedItem == null || nodesList == null) {
+      return const Center(child: Text('Select a topic to see details.'));
+    }
+    List<TreeNode> topicsList = makeParentsList(selectedItem, [], ref);
     String topicsString = makeStringFromList(topicsList, ref);
-    final nodesList =
-        ref.watch(treeNodesProvider)[ref.watch(currentRootProvider).label]!;
-    final selectedNode =
-        ref.watch(selectedItemProvider)[ref.watch(currentRootProvider).label]!;
+    final selectedNode = selectedItem;
     final nodeIndex = nodesList.indexOf(selectedNode);
-    final currentHistory =
-        (nodeIndex != -1) ? nodesList[nodeIndex].history : <String>[];
+    final currentHistory = (nodeIndex != -1)
+        ? nodesList[nodeIndex].history
+        : <String>[];
     return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
@@ -89,13 +97,18 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-              backgroundColor: Theme.of(context).colorScheme.surface,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.9),
               boxShadow: [
                 BoxShadow(
-                    offset: const Offset(0, 4),
-                    spreadRadius: 3,
-                    blurRadius: 5,
-                    color: Theme.of(context).colorScheme.shadow)
+                  offset: const Offset(0, 4),
+                  spreadRadius: 1,
+                  blurRadius: 12,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.2),
+                ),
               ],
               initiallyExpanded: true,
               arrowLocation: ArrowLocation.right,
@@ -110,19 +123,22 @@ class ValuesWidget extends ConsumerWidget {
                   Transform.scale(
                     scale: 0.8,
                     child: IconButton(
-                        onPressed: () async {
-                          await Clipboard.setData(
-                              ClipboardData(text: topicsString));
-                        },
-                        icon: const Icon(Icons.file_copy)),
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: topicsString),
+                        );
+                      },
+                      icon: const Icon(Icons.file_copy),
+                    ),
                   ),
                   Transform.scale(
                     scale: 0.9,
                     child: IconButton(
-                        onPressed: () {
-                          removeTopic(ref, topicsList);
-                        },
-                        icon: const Icon(Icons.restore_from_trash_rounded)),
+                      onPressed: () {
+                        removeTopic(ref, topicsList);
+                      },
+                      icon: const Icon(Icons.restore_from_trash_rounded),
+                    ),
                   ),
                 ],
               ),
@@ -131,44 +147,56 @@ class ValuesWidget extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SelectableText(topicsString,
-                        selectionControls: TextSelectors),
+                    SelectableText(
+                      topicsString,
+                      selectionControls: TextSelectors,
+                    ),
                     Wrap(
                       direction: Axis.horizontal,
                       alignment: WrapAlignment.start,
                       children: topicsList.reversed
-                          .map((topic) => Container(
-                                margin: const EdgeInsets.all(
-                                    0), // Adjust the margin as needed
+                          .map(
+                            (topic) => Container(
+                              margin: const EdgeInsets.all(
+                                0,
+                              ), // Adjust the margin as needed
 
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(0, 3, 0,
-                                      3), // Adjust the padding as needed
-                                  child: Wrap(
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary),
-                                          borderRadius: const BorderRadius.all(
-                                              Radius.circular(5)),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  0,
+                                  3,
+                                  0,
+                                  3,
+                                ), // Adjust the padding as needed
+                                child: Wrap(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
                                         ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Text(topic.label!),
+                                        borderRadius: const BorderRadius.all(
+                                          Radius.circular(5),
                                         ),
                                       ),
-                                      Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: topicsList.first != topic
-                                              ? const Text("/")
-                                              : const Text(""))
-                                    ],
-                                  ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Text(topic.label!),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: topicsList.first != topic
+                                          ? const Text("/")
+                                          : const Text(""),
+                                    ),
+                                  ],
                                 ),
-                              ))
+                              ),
+                            ),
+                          )
                           .toList(),
                     ),
                   ],
@@ -179,13 +207,18 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-              backgroundColor: Theme.of(context).colorScheme.surface,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.9),
               boxShadow: [
                 BoxShadow(
-                    offset: const Offset(0, 4),
-                    spreadRadius: 3,
-                    blurRadius: 5,
-                    color: Theme.of(context).colorScheme.shadow)
+                  offset: const Offset(0, 4),
+                  spreadRadius: 1,
+                  blurRadius: 12,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.2),
+                ),
               ],
               initiallyExpanded: true,
               centralizeFirstChild: false,
@@ -194,21 +227,24 @@ class ValuesWidget extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "Value",
-                    ),
+                    const Text("Value"),
                     Transform.scale(
                       scale: 0.8,
                       child: IconButton(
-                          onPressed: () async {
-                            await Clipboard.setData(ClipboardData(
-                                text: ref
-                                    .watch(selectedItemProvider)[
-                                        ref.watch(currentRootProvider).label]!
-                                    .history
-                                    .last));
-                          },
-                          icon: const Icon(Icons.file_copy)),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            ClipboardData(
+                              text: ref
+                                  .watch(selectedItemProvider)[ref
+                                      .watch(currentRootProvider)
+                                      .label]!
+                                  .history
+                                  .last,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.file_copy),
+                      ),
                     ),
                   ],
                 ),
@@ -217,61 +253,80 @@ class ValuesWidget extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
-                      child: Column(children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        height: 250,
-                        child: TextField(
-                          controller: TextEditingController(
-                              text: ref
-                                      .watch(selectedItemProvider)[
-                                          ref.watch(currentRootProvider).label]!
-                                      .history
-                                      .isEmpty
-                                  ? "---"
-                                  : ref
-                                      .watch(selectedItemProvider)[
-                                          ref.watch(currentRootProvider).label]!
-                                      .history
-                                      .last),
-                          minLines: null,
-                          maxLines: null,
-                          expands: true,
-                          readOnly: true,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: SizedBox(
+                            height: 250,
+                            child: TextField(
+                              controller: TextEditingController(
+                                text:
+                                    ref
+                                        .watch(selectedItemProvider)[ref
+                                            .watch(currentRootProvider)
+                                            .label]!
+                                        .history
+                                        .isEmpty
+                                    ? "---"
+                                    : ref
+                                          .watch(selectedItemProvider)[ref
+                                              .watch(currentRootProvider)
+                                              .label]!
+                                          .history
+                                          .last,
+                              ),
+                              minLines: null,
+                              maxLines: null,
+                              expands: true,
+                              readOnly: true,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                  JsonConfig(
+                    /// your customize configuration
+                    data: JsonConfigData(
+                      animation: true,
+                      animationDuration: const Duration(milliseconds: 300),
+                      animationCurve: Curves.ease,
+                      itemPadding: const EdgeInsets.only(left: 8),
+                      style: const JsonStyleScheme(
+                        arrow: Icon(Icons.arrow_right),
                       ),
                     ),
-                  ])),
-                  JsonConfig(
-
-                      /// your customize configuration
-                      data: JsonConfigData(
-                          animation: true,
-                          animationDuration: const Duration(milliseconds: 300),
-                          animationCurve: Curves.ease,
-                          itemPadding: const EdgeInsets.only(left: 8),
-                          style: const JsonStyleScheme(
-                            arrow: Icon(Icons.arrow_right),
-                          )),
-                      child: SizedBox(
-                        child: CustomJsonView(
-                            arrow: const Icon(Icons.abc_rounded),
-                            shrinkWrap: true,
-                            json: isJSON(currentHistory.isEmpty ? {} : currentHistory.last)
-                                ? json.decode(ref
-                                    .watch(treeNodesProvider)[ref.watch(currentRootProvider).label]![ref
+                    child: SizedBox(
+                      child: CustomJsonView(
+                        arrow: const Icon(Icons.abc_rounded),
+                        shrinkWrap: true,
+                        json:
+                            isJSON(
+                              currentHistory.isEmpty ? {} : currentHistory.last,
+                            )
+                            ? json.decode(
+                                ref
+                                    .watch(treeNodesProvider)[ref
+                                        .watch(currentRootProvider)
+                                        .label]![ref
                                         .watch(treeNodesProvider)[ref
                                             .watch(currentRootProvider)
                                             .label]!
                                         .indexOf(
-                                            ref.watch(selectedItemProvider)[ref
-                                                .watch(currentRootProvider)
-                                                .label]!)]
+                                          ref.watch(selectedItemProvider)[ref
+                                              .watch(currentRootProvider)
+                                              .label]!,
+                                        )]
                                     .history
-                                    .last)
-                                : ref.watch(selectedItemProvider)[ref.watch(currentRootProvider).label]),
-                      )),
+                                    .last,
+                              )
+                            : ref.watch(selectedItemProvider)[ref
+                                  .watch(currentRootProvider)
+                                  .label],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -279,24 +334,30 @@ class ValuesWidget extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: CustomExpandable(
-                backgroundColor: Theme.of(context).colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                      offset: const Offset(0, 4),
-                      spreadRadius: 3,
-                      blurRadius: 5,
-                      color: Theme.of(context).colorScheme.shadow)
-                ],
-                initiallyExpanded: true,
-                centralizeFirstChild: false,
-                firstChild: const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text("Publish"),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surface.withValues(alpha: 0.9),
+              boxShadow: [
+                BoxShadow(
+                  offset: const Offset(0, 4),
+                  spreadRadius: 1,
+                  blurRadius: 12,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.shadow.withValues(alpha: 0.2),
                 ),
-                secondChild: PublishWidget(
-                  root: ref.watch(currentRootProvider),
-                )),
-          )
+              ],
+              initiallyExpanded: true,
+              centralizeFirstChild: false,
+              firstChild: const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text("Publish"),
+              ),
+              secondChild: EnhancedPublishWidget(
+                root: ref.watch(currentRootProvider),
+              ),
+            ),
+          ),
         ],
       ),
     );
