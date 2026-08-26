@@ -40,7 +40,7 @@ final class VersionProvider extends $NotifierProvider<Version, String> {
   }
 }
 
-String _$versionHash() => r'9204b222c08c50d9d966afd0adc5e37e9e3e119f';
+String _$versionHash() => r'129e054f539878760df0733c2d84ab7d87e65861';
 
 abstract class _$Version extends $Notifier<String> {
   String build();
@@ -53,58 +53,6 @@ abstract class _$Version extends $Notifier<String> {
             as $ClassProviderElement<
               AnyNotifier<String, String>,
               String,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
-  }
-}
-
-@ProviderFor(ConnectButton)
-final connectButtonProvider = ConnectButtonProvider._();
-
-final class ConnectButtonProvider
-    extends $NotifierProvider<ConnectButton, bool> {
-  ConnectButtonProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'connectButtonProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$connectButtonHash();
-
-  @$internal
-  @override
-  ConnectButton create() => ConnectButton();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(bool value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<bool>(value),
-    );
-  }
-}
-
-String _$connectButtonHash() => r'099b055b5d3f19dcbc3d9cdc69cb103a7f59bb8b';
-
-abstract class _$ConnectButton extends $Notifier<bool> {
-  bool build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final ref = this.ref as $Ref<bool, bool>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<bool, bool>,
-              bool,
               Object?,
               Object?
             >;

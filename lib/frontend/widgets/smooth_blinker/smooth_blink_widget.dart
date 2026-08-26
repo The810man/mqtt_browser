@@ -53,20 +53,20 @@ class SmoothHighlight extends HookConsumerWidget {
     Map<TreeNode?, DateTime?> nodeTimeMap = ref.watch(blinkTimeProvider);
     if (nodeTimeMap.isEmpty) {
       nodeTimeMap.addAll({node: DateTime.now()});
-      ref.read(blinkTimeProvider.notifier).state = nodeTimeMap;
+      ref.read(blinkTimeProvider.notifier).set(nodeTimeMap);
       return true;
     } else if (nodeTimeMap.containsKey(node) &&
         (DateTime.now().difference(nodeTimeMap[node]!).inMilliseconds >=
             ref.watch(blinkDelayProvider))) {
       nodeTimeMap[node] = DateTime.now();
-      ref.read(blinkTimeProvider.notifier).state = nodeTimeMap;
+      ref.read(blinkTimeProvider.notifier).set(nodeTimeMap);
       return true;
     } else if (nodeTimeMap.containsKey(node) == false) {
       nodeTimeMap.addAll({node: DateTime.now()});
-      ref.read(blinkTimeProvider.notifier).state = nodeTimeMap;
+      ref.read(blinkTimeProvider.notifier).set(nodeTimeMap);
       return true;
     }
-    ref.read(blinkTimeProvider.notifier).state = nodeTimeMap;
+    ref.read(blinkTimeProvider.notifier).set(nodeTimeMap);
     return false;
   }
 

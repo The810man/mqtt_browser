@@ -33,7 +33,7 @@ final class ThemeServiceProvider
   ThemeService create() => ThemeService();
 }
 
-String _$themeServiceHash() => r'c074a66cea648fb67d045c358e50b3945d19865d';
+String _$themeServiceHash() => r'd043d328beef5bd72301a383322e790a63cd8a8d';
 
 abstract class _$ThemeService extends $AsyncNotifier<ThemeSettings> {
   FutureOr<ThemeSettings> build();

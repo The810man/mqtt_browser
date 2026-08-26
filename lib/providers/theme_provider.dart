@@ -13,6 +13,19 @@ class ThemeService extends _$ThemeService {
   static const String _backgroundColorKey = 'background_color';
   static const String _isDarkModeKey = 'is_dark_mode';
 
+  static const Map<String, Color> presetColors = {
+    'Cyan': Color(0xFF00BCD4),
+    'Blue': Color(0xFF2196F3),
+    'Indigo': Color(0xFF3F51B5),
+    'Purple': Color(0xFF9C27B0),
+    'Pink': Color(0xFFE91E63),
+    'Red': Color(0xFFF44336),
+    'Orange': Color(0xFFFF9800),
+    'Lime': Color(0xFFCDDC39),
+    'Green': Color(0xFF4CAF50),
+    'Teal': Color(0xFF009688),
+  };
+
   @override
   Future<ThemeSettings> build() async {
     final prefs = await ref.watch(sharedPreferencesProvider.future);

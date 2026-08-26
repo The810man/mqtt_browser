@@ -111,27 +111,27 @@ abstract class _$Port extends $Notifier<String> {
   }
 }
 
-@ProviderFor(IsConnected)
-final isConnectedProvider = IsConnectedProvider._();
+@ProviderFor(UseWebSocket)
+final useWebSocketProvider = UseWebSocketProvider._();
 
-final class IsConnectedProvider extends $NotifierProvider<IsConnected, bool> {
-  IsConnectedProvider._()
+final class UseWebSocketProvider extends $NotifierProvider<UseWebSocket, bool> {
+  UseWebSocketProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'isConnectedProvider',
+        name: r'useWebSocketProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$isConnectedHash();
+  String debugGetCreateSourceHash() => _$useWebSocketHash();
 
   @$internal
   @override
-  IsConnected create() => IsConnected();
+  UseWebSocket create() => UseWebSocket();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(bool value) {
@@ -142,9 +142,9 @@ final class IsConnectedProvider extends $NotifierProvider<IsConnected, bool> {
   }
 }
 
-String _$isConnectedHash() => r'35ffc8f0395f1f2756e17a24dea590cdb1147b76';
+String _$useWebSocketHash() => r'166dd29afdd5fc82ee6809277d6fb5f5d4ab4d8b';
 
-abstract class _$IsConnected extends $Notifier<bool> {
+abstract class _$UseWebSocket extends $Notifier<bool> {
   bool build();
   @$mustCallSuper
   @override
@@ -155,109 +155,6 @@ abstract class _$IsConnected extends $Notifier<bool> {
             as $ClassProviderElement<
               AnyNotifier<bool, bool>,
               bool,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
-  }
-}
-
-@ProviderFor(Client)
-final clientProvider = ClientProvider._();
-
-final class ClientProvider extends $NotifierProvider<Client, MqttClient?> {
-  ClientProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'clientProvider',
-        isAutoDispose: false,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$clientHash();
-
-  @$internal
-  @override
-  Client create() => Client();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(MqttClient? value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<MqttClient?>(value),
-    );
-  }
-}
-
-String _$clientHash() => r'8e68ee217d4273a11016d2c2698476b4cc6159e9';
-
-abstract class _$Client extends $Notifier<MqttClient?> {
-  MqttClient? build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final ref = this.ref as $Ref<MqttClient?, MqttClient?>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<MqttClient?, MqttClient?>,
-              MqttClient?,
-              Object?,
-              Object?
-            >;
-    element.handleCreate(ref, build);
-  }
-}
-
-@ProviderFor(MqttSettingsState)
-final mqttSettingsStateProvider = MqttSettingsStateProvider._();
-
-final class MqttSettingsStateProvider
-    extends $NotifierProvider<MqttSettingsState, MqttSettings> {
-  MqttSettingsStateProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'mqttSettingsStateProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$mqttSettingsStateHash();
-
-  @$internal
-  @override
-  MqttSettingsState create() => MqttSettingsState();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(MqttSettings value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<MqttSettings>(value),
-    );
-  }
-}
-
-String _$mqttSettingsStateHash() => r'4f8539e8795510f9c76ecb455e4f1fdbd96580e4';
-
-abstract class _$MqttSettingsState extends $Notifier<MqttSettings> {
-  MqttSettings build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final ref = this.ref as $Ref<MqttSettings, MqttSettings>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<MqttSettings, MqttSettings>,
-              MqttSettings,
               Object?,
               Object?
             >;
@@ -316,7 +213,7 @@ final class TabListProvider extends $NotifierProvider<TabList, List<TreeNode>> {
         argument: null,
         retry: null,
         name: r'tabListProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -337,7 +234,7 @@ final class TabListProvider extends $NotifierProvider<TabList, List<TreeNode>> {
   }
 }
 
-String _$tabListHash() => r'd00796fa0d33777bf9b70cd855738bcaabe50f25';
+String _$tabListHash() => r'337ced35313e60d996605713c999c1086f83f715';
 
 abstract class _$TabList extends $Notifier<List<TreeNode>> {
   List<TreeNode> build();
@@ -367,7 +264,7 @@ final class TabLengthProvider extends $NotifierProvider<TabLength, int> {
         argument: null,
         retry: null,
         name: r'tabLengthProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -388,7 +285,7 @@ final class TabLengthProvider extends $NotifierProvider<TabLength, int> {
   }
 }
 
-String _$tabLengthHash() => r'e4d15c412155014854ef36bf920a4220fc473009';
+String _$tabLengthHash() => r'486d14699da738ea1fa9a16c2609761a2439f1aa';
 
 abstract class _$TabLength extends $Notifier<int> {
   int build();
@@ -418,7 +315,7 @@ final class TabIndexProvider extends $NotifierProvider<TabIndex, int> {
         argument: null,
         retry: null,
         name: r'tabIndexProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -439,7 +336,7 @@ final class TabIndexProvider extends $NotifierProvider<TabIndex, int> {
   }
 }
 
-String _$tabIndexHash() => r'e7d82caa37bc977543f8222efc930bc7fa233614';
+String _$tabIndexHash() => r'67646db64320b23ac35c4290a889b25cd750866f';
 
 abstract class _$TabIndex extends $Notifier<int> {
   int build();
@@ -469,7 +366,7 @@ final class RootProvider extends $NotifierProvider<Root, TreeNode> {
         argument: null,
         retry: null,
         name: r'rootProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -490,7 +387,7 @@ final class RootProvider extends $NotifierProvider<Root, TreeNode> {
   }
 }
 
-String _$rootHash() => r'19af7f3bf96e37a0898fc0a1b2088d6993e633ae';
+String _$rootHash() => r'f830fb7aabf546534daa3c16b31089a0a76f897f';
 
 abstract class _$Root extends $Notifier<TreeNode> {
   TreeNode build();
@@ -521,7 +418,7 @@ final class CurrentRootProvider
         argument: null,
         retry: null,
         name: r'currentRootProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -542,7 +439,7 @@ final class CurrentRootProvider
   }
 }
 
-String _$currentRootHash() => r'36b99ed21ed66b9a353de5ee5cd7edde7f52d40b';
+String _$currentRootHash() => r'629267df9f07dbeb65feb2f24952a79976c19741';
 
 abstract class _$CurrentRoot extends $Notifier<TreeNode> {
   TreeNode build();
@@ -573,7 +470,7 @@ final class TabDataProvider
         argument: null,
         retry: null,
         name: r'tabDataProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -596,7 +493,7 @@ final class TabDataProvider
   }
 }
 
-String _$tabDataHash() => r'773f30dece7801a5da41159db203d5cd84f890aa';
+String _$tabDataHash() => r'cffbe80603302b1edb2168a9be24c6933c471066';
 
 abstract class _$TabData extends $Notifier<Map<String, Map<String, dynamic>>> {
   Map<String, Map<String, dynamic>> build();
@@ -635,7 +532,7 @@ final class TreeNodesProvider
         argument: null,
         retry: null,
         name: r'treeNodesProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -656,7 +553,7 @@ final class TreeNodesProvider
   }
 }
 
-String _$treeNodesHash() => r'5b7dd87d0b3dbbcb96824312fc290495f9c83a8b';
+String _$treeNodesHash() => r'b31551cf6c31760a7255fc0dcd383119aa38d68c';
 
 abstract class _$TreeNodes extends $Notifier<Map<String, List<TreeNode>>> {
   Map<String, List<TreeNode>> build();
@@ -692,7 +589,7 @@ final class SelectedItemProvider
         argument: null,
         retry: null,
         name: r'selectedItemProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -713,7 +610,7 @@ final class SelectedItemProvider
   }
 }
 
-String _$selectedItemHash() => r'9bf87305d2ae2a75181cfa15f1400a729fe7878b';
+String _$selectedItemHash() => r'd064f803e84c3e89cedca8fc868909e528d83264';
 
 abstract class _$SelectedItem extends $Notifier<Map<String, TreeNode>> {
   Map<String, TreeNode> build();

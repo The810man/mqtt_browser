@@ -42,7 +42,7 @@ final class MqttClientNotifierProvider
 }
 
 String _$mqttClientNotifierHash() =>
-    r'6a053ae877c6890293530c7d7df87dd2168155cb';
+    r'8c04b504d9e41cba4f9b0087360895c60ebff6ad';
 
 abstract class _$MqttClientNotifier extends $Notifier<MqttConnectionState> {
   MqttConnectionState build();

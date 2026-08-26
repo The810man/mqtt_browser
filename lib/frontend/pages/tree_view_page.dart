@@ -1,169 +1,135 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_fancy_tree_view/flutter_fancy_tree_view.dart';
+
 import 'package:mqtt_browser/frontend/tree_node.dart';
-import 'package:mqtt_browser/providers/providers.dart';
+import 'package:mqtt_browser/frontend/widgets/tab_widgets/chart_view_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/tiling.dart';
 import 'package:mqtt_browser/frontend/widgets/tree_nodes_widget.dart';
-import 'package:sidebarx/sidebarx.dart';
 import 'package:mqtt_browser/frontend/widgets/right_widget.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 
-class TreeViewPage extends ConsumerWidget {
-  TreeSearchResult<TreeNode>? filter;
-  Pattern? searchPattern;
-  final textEditingController = TextEditingController();
-  final List selectedList = [];
-  final TextEditingController valueTextController = TextEditingController();
-  final TextEditingController searchBarTextController = TextEditingController();
-  final SidebarXController sidebarController = SidebarXController(
-    selectedIndex: 0,
-    extended: true,
-  );
-  final sideBarScaffholdKey = GlobalKey<ScaffoldState>();
-  TreeViewPage({super.key});
+class TreeViewPage extends ConsumerStatefulWidget {
+  const TreeViewPage({super.key});
 
-  void select(dynamic item, WidgetRef ref) {
-    ref.read(selectedItemProvider.notifier).state = item;
-    List nodeList = ref.read(treeNodesProvider)[ref.watch(rootProvider).label]!;
-    for (var i in nodeList) {
-      if (i.isSelected) {
-        i.isSelected = false;
-      }
-    }
-    item.isSelected = !item.isSelected;
-  }
+  @override
+  ConsumerState<TreeViewPage> createState() => _TreeViewPageState();
+}
 
-  Iterable<TreeNode> getChildren(TreeNode node) {
-    if (filter case TreeSearchResult<TreeNode> filter) {
-      return node.children.where(filter.hasMatch);
-    }
-    return node.children;
-  }
-
-  void search(String query, WidgetRef ref) {
-    // Needs to be reset before searching again, otherwise the tree controller
-    // wouldn't reach some nodes because of the `getChildren()` impl above.
-    filter = null;
-
-    Pattern pattern;
-    try {
-      pattern = RegExp(query);
-    } on FormatException {
-      pattern = query;
-    }
-    searchPattern = pattern;
-    final controller =
-        ref.watch(
-              tabDataProvider,
-            )["${ref.watch(rootProvider).label}"]?['controller']
-            as TreeController<TreeNode>?;
-    if (controller == null) {
-      return;
-    }
-    filter = controller.search(
-      (TreeNode node) => node.label!.contains(pattern),
-    );
-    controller.rebuild();
-  }
-
-  void clearSearch(WidgetRef ref) {
-    if (filter == null) return;
-    filter = null;
-    searchPattern = null;
-    final controller =
-        ref.watch(
-              tabDataProvider,
-            )["${ref.watch(rootProvider).label}"]?['controller']
-            as TreeController<TreeNode>?;
-    controller?.rebuild();
-    searchBarTextController.clear();
-  }
-
-  void onSearchQueryChanged(WidgetRef ref) {
-    final String query = searchBarTextController.text.trim();
-
-    if (query.isEmpty) {
-      clearSearch(ref);
-      return;
-    }
-
-    search(query, ref);
-  }
+/// Right-hand panel of the main screen: topic Details plus a live Graphs
+/// view (time range + timestamp x-axis + live/pause toggle) for every
+/// numeric topic under the current connection.
+class _DetailsAndGraphsPanel extends HookConsumerWidget {
+  const _DetailsAndGraphsPanel();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Tiling(
-      rightWidget: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                offset: const Offset(0, 4),
-                color: Theme.of(
-                  context,
-                ).colorScheme.shadow.withValues(alpha: 0.25),
-                spreadRadius: 1,
-                blurRadius: 12,
-              ),
+    final tab = useTabController(initialLength: 2);
+    final cs = Theme.of(context).colorScheme;
+    final root = ref.watch(rootProvider);
+
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: TabBar(
+            controller: tab,
+            labelColor: cs.primary,
+            indicatorColor: cs.primary,
+            tabs: const [
+              Tab(icon: Icon(Icons.info_outline), text: 'Details'),
+              Tab(icon: Icon(Icons.show_chart_rounded), text: 'Graphs'),
             ],
           ),
-          child: ValuesWidget(root: ref.watch(rootProvider)),
         ),
+        Expanded(
+          child: TabBarView(
+            controller: tab,
+            children: [
+              ValuesWidget(root: root),
+              ChartViewWidget(rootNode: root),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TreeViewPageState extends ConsumerState<TreeViewPage> {
+  TreeSearchResult<TreeNode>? _filter;
+
+  TreeController<TreeNode>? _controller() {
+    final rootLabel = ref.read(rootProvider).label;
+    return ref.read(tabDataProvider)[rootLabel]?['controller']
+        as TreeController<TreeNode>?;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Rebuild tree controllers whenever new messages arrive
+    ref.listen(treeNodesProvider, (_, next) {
+      debugPrint('[PAGE] treeNodesProvider changed, keys=${next.keys.toList()}');
+      _controller()?.rebuild();
+    });
+
+    return Tiling(
+      leftLabel: 'Tree',
+      rightLabel: 'Details',
+      rightWidget: Padding(
+        padding: const EdgeInsets.all(8),
+        child: _panel(child: const _DetailsAndGraphsPanel()),
       ),
       leftWidget: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Consumer(
-          builder: (context, ref, child) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surface.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    offset: const Offset(0, 4),
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.shadow.withValues(alpha: 0.25),
-                    spreadRadius: 1,
-                    blurRadius: 12,
-                  ),
-                ],
-              ),
-              width: MediaQuery.of(context).size.width,
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: Builder(
-                  builder: (context) {
-                    final rootLabel = ref.watch(rootProvider).label;
-                    final tabData = ref.watch(tabDataProvider);
-                    final treeNodes = ref.watch(treeNodesProvider);
-                    final controller =
-                        tabData["$rootLabel"]?['controller']
-                            as TreeController<TreeNode>?;
-                    final nodes = treeNodes[rootLabel];
-                    if (controller == null || nodes == null) {
-                      return const Center(
-                        child: Text(
-                          'No tree data yet. Connect or wait for messages.',
-                        ),
-                      );
-                    }
-                    return FastTreeNodeView(
-                      treeController: controller,
-                      nodes: nodes,
-                    );
-                  },
-                ),
-              ),
-            );
-          },
-        ),
+        padding: const EdgeInsets.all(8),
+        child: _panel(child: _treeContent()),
       ),
+    );
+  }
+
+  Widget _treeContent() {
+    final rootLabel = ref.watch(rootProvider).label;
+    final tabData = ref.watch(tabDataProvider);
+    final treeNodes = ref.watch(treeNodesProvider);
+    final controller =
+        tabData[rootLabel]?['controller'] as TreeController<TreeNode>?;
+    final nodes = treeNodes[rootLabel];
+
+    debugPrint('[PAGE] rootLabel="$rootLabel" tabDataKeys=${tabData.keys.toList()} treeNodesKeys=${treeNodes.keys.toList()} controller=${controller != null} nodes=${nodes?.length}');
+
+    if (controller == null || nodes == null) {
+      return const Center(
+        child: Text('No tree data yet. Connect or wait for messages.'),
+      );
+    }
+
+    return SizedBox(
+      height: double.infinity,
+      width: double.infinity,
+      child: FastTreeNodeView(
+        treeController: controller,
+        nodes: nodes,
+        filter: _filter,
+      ),
+    );
+  }
+
+  Widget _panel({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 4),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.25),
+            spreadRadius: 1,
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

@@ -1,7 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sidebarx/sidebarx.dart';
 import 'package:flutter/material.dart';
-import 'package:mqtt_browser/main.dart';
+import 'package:mqtt_browser/constants.dart';
+import 'package:mqtt_browser/frontend/responsive.dart';
 import 'package:mqtt_browser/providers/providers.dart';
 
 class Sidebarwidget extends ConsumerWidget {
@@ -10,7 +11,13 @@ class Sidebarwidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mobile = isMobile(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final drawerWidth = mobile ? screenWidth * 0.85 : screenWidth / 3;
+    final sliderWidth = mobile ? screenWidth * 0.6 : screenWidth / 4;
+
     Color canvasColor = ref.watch(themeProvider).colorScheme.primary;
+
     return SidebarX(
       showToggleButton: false,
       controller: controller,
@@ -40,7 +47,7 @@ class Sidebarwidget extends ConsumerWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color.fromARGB(64, 0, 0, 0).withOpacity(0.28),
+              color: const Color.fromARGB(64, 0, 0, 0).withValues(alpha: 0.28),
               blurRadius: 30,
             ),
           ],
@@ -48,7 +55,7 @@ class Sidebarwidget extends ConsumerWidget {
         iconTheme: const IconThemeData(color: Colors.white, size: 20),
       ),
       extendedTheme: SidebarXTheme(
-        width: MediaQuery.of(context).size.width / 3,
+        width: drawerWidth,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.black, width: 3),
           color: const Color.fromARGB(104, 128, 128, 128),
@@ -66,14 +73,23 @@ class Sidebarwidget extends ConsumerWidget {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Tree View Settings",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
+                  Flexible(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Text(
+                        'Tree View Settings',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
-                  Icon(Icons.settings, color: Colors.white),
+                  Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.settings, color: Colors.white),
+                  ),
                 ],
               ),
             ),
@@ -82,301 +98,288 @@ class Sidebarwidget extends ConsumerWidget {
       },
       items: [
         SidebarXItem(
-          iconWidget: SizedBox(
-            height: MediaQuery.of(context).size.height,
-            width: MediaQuery.of(context).size.width / 4,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Line Settings",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const Text(
-                      "Node Distance",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Slider(
-                      min: 0,
-                      max: 100,
-                      value: ref.watch(spaceSliderProvider),
-                      onChanged: (value) {
-                        ref.read(spaceSliderProvider.notifier).state = value;
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.nodeDistance.stringValue,
-                                value,
-                              ),
-                            );
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const Text(
-                      "Node Tickness",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Slider(
-                      min: 0,
-                      max: 25,
-                      value: ref.watch(thicknessSliderProvider),
-                      onChanged: (value) {
-                        ref.read(thicknessSliderProvider.notifier).state =
-                            value;
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.nodeThickness.stringValue,
-                                value,
-                              ),
-                            );
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const Text(
-                      "Node Origin",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Slider(
-                      min: 0,
-                      max: 1,
-                      value: ref.watch(originSliderProvider),
-                      onChanged: (value) {
-                        ref.read(originSliderProvider.notifier).state = value;
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.nodeOrigin.stringValue,
-                                value,
-                              ),
-                            );
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const Text(
-                      "Node Height",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Slider(
-                      min: 0,
-                      max: 2,
-                      value: ref.watch(nodeHeightProvider),
-                      onChanged: (value) {
-                        ref.read(nodeHeightProvider.notifier).state = value;
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.nodeHeight.stringValue,
-                                value,
-                              ),
-                            );
-                      },
-                    ),
-                  ],
-                ),
-
-                /// Spacer Line
-                Container(
-                  width: MediaQuery.of(context).size.width / 4,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      width: 1,
-                      color: const Color.fromARGB(255, 255, 255, 255),
-                    ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    "Line Settings",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(
-                      Icons.question_mark_rounded,
-                      color: Colors.white,
-                    ),
-                    const Text(
-                      "Rounded Line Connections",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Switch.adaptive(
-                      value: ref.watch(roundedLineSwitchProvider),
-                      onChanged: (bool value) {
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setBool(
-                                SharedPreferenceKey.roundLines.stringValue,
-                                value,
-                              ),
-                            );
-                        ref.read(roundedLineSwitchProvider.notifier).state =
-                            value;
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(
-                      Icons.question_mark_rounded,
-                      color: Colors.white,
-                    ),
-                    const Text(
-                      "Connect Nodes",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Switch.adaptive(
-                      value: ref.watch(connectLinesSwitchProvider),
-                      onChanged: (bool value) {
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setBool(
-                                SharedPreferenceKey.connectNodes.stringValue,
-                                value,
-                              ),
-                            );
-                        ref.read(connectLinesSwitchProvider.notifier).state =
-                            value;
-                      },
-                    ),
-                  ],
-                ),
-
-                /// Spacer Line
-                Container(
-                  width: MediaQuery.of(context).size.width / 4,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      width: 1,
-                      color: const Color.fromARGB(255, 255, 255, 255),
-                    ),
-                  ),
-                ),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(
-                      Icons.question_mark_rounded,
-                      color: Colors.white,
-                    ),
-                    const Text(
-                      "Dark Mode",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    Switch.adaptive(
-                      value: ref.watch(colorModeProvider.notifier).state,
-                      onChanged: (bool) {
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setBool(
-                                SharedPreferenceKey.darkMode.stringValue,
-                                bool,
-                              ),
-                            );
-                        ref.watch(colorModeProvider.notifier).state = !ref
-                            .watch(colorModeProvider);
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const SizedBox(width: 5),
-                    const Text(
-                      "Node Blink delay in ms",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(width: 1),
-                    Slider(
-                      min: 0,
-                      max: 1500,
-                      value: ref.watch(blinkDelayProvider),
-                      onChanged: (value) {
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.blinkDelay.stringValue,
-                                value,
-                              ),
-                            );
-                        ref.read(blinkDelayProvider.notifier).state = value;
-                      },
-                    ),
-                  ],
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Icon(Icons.swap_horiz_rounded, color: Colors.white),
-                    const SizedBox(width: 5),
-                    const Text(
-                      "Node Blink duration in ms",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(width: 1),
-                    Slider(
-                      min: 0,
-                      max: 1500,
-                      value: ref.watch(blinkDurationProvider),
-                      onChanged: (value) {
-                        ref
-                            .read(sharedPreferencesProvider.future)
-                            .then(
-                              (prefs) => prefs.setDouble(
-                                SharedPreferenceKey.blinkDuration.stringValue,
-                                value,
-                              ),
-                            );
-                        ref.read(blinkDurationProvider.notifier).state = value;
-                      },
-                    ),
-                  ],
-                ),
-              ],
+          iconBuilder: (selected, hovered) => SizedBox(
+            width: sliderWidth,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _SettingsContent(sliderWidth: sliderWidth),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SettingsContent extends ConsumerWidget {
+  const _SettingsContent({required this.sliderWidth});
+  final double sliderWidth;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        const _SectionHeader('Node Settings'),
+        _SliderRow(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Node Distance',
+          value: ref.watch(spaceSliderProvider),
+          min: 0,
+          max: 100,
+          onChanged: (value) {
+            ref.read(spaceSliderProvider.notifier).set(value);
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.nodeDistance.stringValue,
+                value,
+              ),
+            );
+          },
+        ),
+        _SliderRow(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Node Thickness',
+          value: ref.watch(thicknessSliderProvider),
+          min: 0,
+          max: 25,
+          onChanged: (value) {
+            ref.read(thicknessSliderProvider.notifier).set(value);
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.nodeThickness.stringValue,
+                value,
+              ),
+            );
+          },
+        ),
+        _SliderRow(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Node Origin',
+          value: ref.watch(originSliderProvider),
+          min: 0,
+          max: 1,
+          onChanged: (value) {
+            ref.read(originSliderProvider.notifier).set(value);
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.nodeOrigin.stringValue,
+                value,
+              ),
+            );
+          },
+        ),
+        _SliderRow(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Node Height',
+          value: ref.watch(nodeHeightProvider),
+          min: 0,
+          max: 2,
+          onChanged: (value) {
+            ref.read(nodeHeightProvider.notifier).set(value);
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.nodeHeight.stringValue,
+                value,
+              ),
+            );
+          },
+        ),
+        const _Divider(),
+        const _SectionHeader('Line Settings'),
+        _SwitchRow(
+          icon: Icons.question_mark_rounded,
+          label: 'Rounded Connections',
+          value: ref.watch(roundedLineSwitchProvider),
+          onChanged: (value) {
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setBool(
+                SharedPreferenceKey.roundLines.stringValue,
+                value,
+              ),
+            );
+            ref.read(roundedLineSwitchProvider.notifier).set(value);
+          },
+        ),
+        _SwitchRow(
+          icon: Icons.question_mark_rounded,
+          label: 'Connect Nodes',
+          value: ref.watch(connectLinesSwitchProvider),
+          onChanged: (value) {
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setBool(
+                SharedPreferenceKey.connectNodes.stringValue,
+                value,
+              ),
+            );
+            ref.read(connectLinesSwitchProvider.notifier).set(value);
+          },
+        ),
+        const _Divider(),
+        const _SectionHeader('Display'),
+        _SwitchRow(
+          icon: Icons.dark_mode,
+          label: 'Dark Mode',
+          value: ref.watch(colorModeProvider),
+          onChanged: (value) {
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setBool(
+                SharedPreferenceKey.darkMode.stringValue,
+                value,
+              ),
+            );
+            ref.read(colorModeProvider.notifier).set(value);
+          },
+        ),
+        _SliderRow(
+          icon: Icons.timer_outlined,
+          label: 'Blink Delay (ms)',
+          value: ref.watch(blinkDelayProvider),
+          min: 0,
+          max: 1500,
+          onChanged: (value) {
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.blinkDelay.stringValue,
+                value,
+              ),
+            );
+            ref.read(blinkDelayProvider.notifier).set(value);
+          },
+        ),
+        _SliderRow(
+          icon: Icons.timer,
+          label: 'Blink Duration (ms)',
+          value: ref.watch(blinkDurationProvider),
+          min: 0,
+          max: 1500,
+          onChanged: (value) {
+            ref.read(sharedPreferencesProvider.future).then(
+              (prefs) => prefs.setDouble(
+                SharedPreferenceKey.blinkDuration.stringValue,
+                value,
+              ),
+            );
+            ref.read(blinkDurationProvider.notifier).set(value);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(color: Colors.white30, height: 16, thickness: 0.5);
+  }
+}
+
+class _SliderRow extends StatelessWidget {
+  const _SliderRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            min: min,
+            max: max,
+            value: value,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Switch.adaptive(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }
