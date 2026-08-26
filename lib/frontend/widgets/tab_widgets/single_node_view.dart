@@ -9,6 +9,7 @@ import 'package:mqtt_browser/frontend/widgets/tab_widgets/list_view_widget.dart'
 import 'package:mqtt_browser/frontend/widgets/tab_widgets/mindmap_view_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/tab_widgets/grid_view_widget.dart';
 import 'package:mqtt_browser/frontend/widgets/tab_widgets/chart_view_widget.dart';
+import 'package:mqtt_browser/frontend/widgets/tab_widgets/node_executor_widget.dart';
 
 class Singlenodeview extends ConsumerWidget {
   final textEditingController = TextEditingController();
@@ -17,32 +18,54 @@ class Singlenodeview extends ConsumerWidget {
   final String newText = "";
   Singlenodeview({super.key});
 
+  Widget _panel(BuildContext context, Widget child) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, 4),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.25),
+            spreadRadius: 1,
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(treeNodesProvider); // rebuild whenever MQTT data arrives
     final currentTab = ref.watch(currentRootProvider);
-    final tabKey = currentTab.label ?? 'default';
-    final viewType = ref.watch(tabDataProvider)[tabKey]!['viewType'] as String;
+    final tabKey = currentTab.label;
+    final tabEntry = ref.watch(tabDataProvider)[tabKey];
+    if (tabEntry == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final viewType = tabEntry['viewType'] as String;
 
     Widget leftContent;
     if (viewType == 'tree') {
-      leftContent = Column(
-        children: [
-          Treeviewsearchbar(
-            rootNode: currentTab,
-            treeController: ref.watch(
-              tabDataProvider,
-            )[tabKey]!['controller']!,
-          ),
-          Expanded(
-            child: FastTreeNodeView(
-              treeController: ref.watch(
-                tabDataProvider,
-              )[tabKey]!['controller']!,
-              nodes: ref.watch(treeNodesProvider)[tabKey]!,
+      final controller = tabEntry['controller'];
+      final nodes = ref.watch(treeNodesProvider)[tabKey];
+      if (controller == null || nodes == null) {
+        leftContent = const Center(child: CircularProgressIndicator());
+      } else {
+        leftContent = Column(
+          children: [
+            Treeviewsearchbar(rootNode: currentTab, treeController: controller),
+            Expanded(
+              child: FastTreeNodeView(
+                treeController: controller,
+                nodes: nodes,
+              ),
             ),
-          ),
-        ],
-      );
+          ],
+        );
+      }
     } else if (viewType == 'list') {
       leftContent = ListViewWidget(rootNode: currentTab);
     } else if (viewType == 'mindmap') {
@@ -51,59 +74,24 @@ class Singlenodeview extends ConsumerWidget {
       leftContent = GridViewWidget(rootNode: currentTab);
     } else if (viewType == 'chart') {
       leftContent = ChartViewWidget(rootNode: currentTab);
+    } else if (viewType == 'executor') {
+      return NodeExecutorWidget(rootNode: currentTab);
     } else {
       leftContent = const Center(child: Text('Unknown view type'));
     }
 
     return Tiling(
+      leftLabel: 'View',
+      rightLabel: 'Details',
       rightWidget: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                offset: const Offset(0, 4),
-                color: Theme.of(
-                  context,
-                ).colorScheme.shadow.withValues(alpha: 0.25),
-                spreadRadius: 1,
-                blurRadius: 12,
-              ),
-            ],
-          ),
-          child: ValuesWidget(root: currentTab),
-        ),
+        child: _panel(context, ValuesWidget(root: currentTab)),
       ),
       leftWidget: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Consumer(
-          builder: (context, ref, child) {
-            return Container(
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surface.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    offset: const Offset(0, 4),
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.shadow.withValues(alpha: 0.25),
-                    spreadRadius: 1,
-                    blurRadius: 12,
-                  ),
-                ],
-              ),
-              width: MediaQuery.of(context).size.width,
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: leftContent,
-              ),
-            );
-          },
+        child: _panel(
+          context,
+          SizedBox.expand(child: leftContent),
         ),
       ),
     );

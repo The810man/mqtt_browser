@@ -1,60 +1,50 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:mqtt_browser/backend/mqtt_sys.dart' as mqSys;
 import 'package:mqtt_browser/models/mqtt_settings.dart';
 import 'package:mqtt_browser/providers/providers.dart';
 
-class SetupSettings extends ConsumerStatefulWidget {
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+class SetupSettings extends HookConsumerWidget {
   const SetupSettings({
-    super.key,
+    Key? key,
     required this.startClient,
     required this.height,
     required this.width,
-  });
+  }) : super(key: key);
 
   final ValueChanged<WidgetRef> startClient;
   final double height;
   final double width;
 
   @override
-  ConsumerState<SetupSettings> createState() => _SetupSettingsState();
-}
-
-class _SetupSettingsState extends ConsumerState<SetupSettings> {
-  late final TextEditingController _hostController;
-  late final TextEditingController _portController;
-
-  @override
-  void initState() {
-    super.initState();
-    _hostController = TextEditingController(text: ref.read(hostProvider));
-    _portController = TextEditingController(text: ref.read(portProvider));
-  }
-
-  @override
-  void dispose() {
-    _hostController.dispose();
-    _portController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hostController = useTextEditingController(
+      text: ref.watch(hostProvider),
+    );
+    final portController = useTextEditingController(
+      text: ref.watch(portProvider),
+    );
     final host = ref.watch(hostProvider);
     final port = ref.watch(portProvider);
     final theme = ref.watch(themeProvider);
 
-    // Update controllers if provider changes externally (e.g., loading connection)
-    if (_hostController.text != host) {
-      _hostController.text = host;
-    }
-    if (_portController.text != port) {
-      _portController.text = port;
-    }
+    // Sync controllers text with provider values
+    useEffect(() {
+      if (hostController.text != host) {
+        hostController.text = host;
+      }
+      if (portController.text != port) {
+        portController.text = port;
+      }
+      return null;
+    }, [host, port]);
 
     return Container(
-      width: widget.width,
-      height: widget.height,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.8),
         border: Border.all(color: theme.colorScheme.outlineVariant, width: 1),
@@ -100,31 +90,40 @@ class _SetupSettingsState extends ConsumerState<SetupSettings> {
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _hostController,
-                    onChanged: (value) {
-                      ref.read(hostProvider.notifier).state = value;
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'e.g., localhost, mqtt.example.com',
-                      prefixIcon: const Icon(Icons.cloud),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _ProtocolToggle(),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: hostController,
+                          onChanged: (value) {
+                            ref.read(hostProvider.notifier).set(value);
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'e.g., localhost, mqtt.example.com',
+                            prefixIcon: const Icon(Icons.cloud),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   // Port field
                   Text('Port', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _portController,
+                    controller: portController,
                     onChanged: (value) {
-                      ref.read(portProvider.notifier).state = value;
+                      ref.read(portProvider.notifier).set(value);
                     },
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
@@ -422,24 +421,10 @@ class _SetupSettingsState extends ConsumerState<SetupSettings> {
                                   children: [
                                     FilledButton.tonal(
                                       onPressed: () {
-                                        final client = ref.read(clientProvider);
-                                        if (client == null) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Not connected'),
-                                            ),
-                                          );
-                                          return;
-                                        }
                                         try {
-                                          // perform subscribe now
-                                          mqSys.clientSubcribe(
-                                            client,
-                                            topic,
-                                            qos,
-                                          );
+                                          ref
+                                              .read(mqttClientProvider.notifier)
+                                              .subscribe(topic, qos: qos);
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
@@ -516,8 +501,8 @@ class _SetupSettingsState extends ConsumerState<SetupSettings> {
                         icon: const Icon(Icons.refresh, size: 18),
                         label: const Text('Reset'),
                         onPressed: () {
-                          ref.read(hostProvider.notifier).state = 'localhost';
-                          ref.read(portProvider.notifier).state = '1883';
+                          ref.read(hostProvider.notifier).set('localhost');
+                          ref.read(portProvider.notifier).set('1883');
                           ref
                               .read(mqttSettingsServiceProvider.notifier)
                               .updateSettings(
@@ -628,7 +613,7 @@ class _SetupSettingsState extends ConsumerState<SetupSettings> {
                       icon: const Icon(Icons.power_settings_new),
                       label: const Text('Connect'),
                       onPressed: () {
-                        widget.startClient(ref);
+                        startClient(ref);
                       },
                     ),
                   ),
@@ -642,49 +627,36 @@ class _SetupSettingsState extends ConsumerState<SetupSettings> {
   }
 }
 
-class _SubscriptionEditor extends StatefulWidget {
-  const _SubscriptionEditor();
-
-  @override
-  State<_SubscriptionEditor> createState() => _SubscriptionEditorState();
-}
-
-class _SubscriptionEditorState extends State<_SubscriptionEditor> {
-  final TextEditingController _topicController = TextEditingController(
-    text: '#',
-  );
-  int _qos = 0;
-
-  @override
-  void dispose() {
-    _topicController.dispose();
-    super.dispose();
-  }
+class _SubscriptionEditor extends HookWidget {
+  const _SubscriptionEditor({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final topicController = useTextEditingController(text: '#');
+    final qos = useState<int>(0);
+
     return Row(
       children: [
         Expanded(
           child: TextFormField(
-            controller: _topicController,
+            controller: topicController,
             decoration: const InputDecoration(hintText: 'Topic (e.g. #)'),
           ),
         ),
         const SizedBox(width: 8),
         DropdownButton<int>(
-          value: _qos,
+          value: qos.value,
           items: const [
             DropdownMenuItem(value: 0, child: Text('QoS 0')),
             DropdownMenuItem(value: 1, child: Text('QoS 1')),
             DropdownMenuItem(value: 2, child: Text('QoS 2')),
           ],
-          onChanged: (v) => setState(() => _qos = v ?? 0),
+          onChanged: (v) => qos.value = v ?? 0,
         ),
         const SizedBox(width: 8),
         FilledButton(
           onPressed: () {
-            final topic = _topicController.text.trim();
+            final topic = topicController.text.trim();
             if (topic.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -699,7 +671,7 @@ class _SubscriptionEditorState extends State<_SubscriptionEditor> {
             final currentSubs = List<Map<String, dynamic>>.from(
               currentSettings.subscriptions,
             );
-            currentSubs.add({'topic': topic, 'qos': _qos});
+            currentSubs.add({'topic': topic, 'qos': qos.value});
             container
                 .read(mqttSettingsServiceProvider.notifier)
                 .updateSettings(
@@ -712,6 +684,54 @@ class _SubscriptionEditorState extends State<_SubscriptionEditor> {
           child: const Text('Add'),
         ),
       ],
+    );
+  }
+}
+
+class _ProtocolToggle extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // On web the browser always uses WebSocket — TCP is not available.
+    final useWs = kIsWeb ? true : ref.watch(useWebSocketProvider);
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: kIsWeb
+          ? 'Browser always uses WebSocket'
+          : useWs
+          ? 'WebSocket — click for MQTT/TCP'
+          : 'MQTT/TCP — click for WebSocket',
+      child: InkWell(
+        onTap: kIsWeb
+            ? null
+            : () => ref.read(useWebSocketProvider.notifier).toggle(),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: useWs
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            color: useWs
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
+                : Colors.transparent,
+          ),
+          child: Text(
+            useWs ? 'WS' : 'MQTT',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: useWs
+                  ? theme.colorScheme.primary
+                  : kIsWeb
+                  ? theme.colorScheme.primary.withValues(alpha: 0.6)
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_client.dart' hide MqttConnectionState;
 import '../tree_node.dart';
-import '../../backend/mqtt_sys.dart' as mqSys;
-import 'package:mqtt_browser/providers/ui_state_providers.dart';
+import 'package:mqtt_browser/providers/providers.dart';
 
 class EnhancedPublishWidget extends HookConsumerWidget {
   final TreeNode root;
@@ -43,6 +42,9 @@ class EnhancedPublishWidget extends HookConsumerWidget {
   }
 
   String? _validatePayload(String payload, String format) {
+    // An empty payload is valid on its own — combined with Retain it clears
+    // (deletes) the topic's retained message on the broker.
+    if (payload.isEmpty) return null;
     switch (format) {
       case 'json':
         return _validateJson(payload);
@@ -86,26 +88,49 @@ class EnhancedPublishWidget extends HookConsumerWidget {
       return;
     }
 
-    final client = ref.read(clientProvider);
-    if (client == null) {
+    final notifier = ref.read(mqttClientProvider.notifier);
+    if (ref.read(mqttClientProvider) != MqttConnectionState.connected) {
       _showError(context, 'Publish failed: not connected');
       return;
     }
 
     try {
-      // Subscribe first to receive our own message (if broker supports)
-      mqSys.clientSubcribe(client, topic, 0);
-
-      // Prepare payload
-      final builder = MqttPayloadBuilder();
-      builder.addString(payload);
-
-      // Publish with error handling
-      client.publishMessage(topic, qos, builder.payload!, retain: retain);
-
-      _showSuccess(context, 'Published to: $topic');
+      final qosInt = qos == MqttQos.atLeastOnce
+          ? 1
+          : qos == MqttQos.exactlyOnce
+          ? 2
+          : 0;
+      notifier.publish(topic, payload, qos: qosInt, retain: retain);
+      _showSuccess(
+        context,
+        payload.isEmpty ? 'Cleared retained message on: $topic' : 'Published to: $topic',
+      );
     } catch (e) {
-      _showError(context, 'Publish failed: ${e.toString()}');
+      _showError(context, 'Publish failed: $e');
+    }
+  }
+
+  void _deleteRetained(BuildContext context, WidgetRef ref) {
+    final topicController = ref.read(publishTextControllerProvider);
+    final topic = topicController.text;
+
+    final topicError = _validateTopic(topic);
+    if (topicError != null) {
+      _showError(context, topicError);
+      return;
+    }
+
+    if (ref.read(mqttClientProvider) != MqttConnectionState.connected) {
+      _showError(context, 'Delete failed: not connected');
+      return;
+    }
+
+    try {
+      ref.read(mqttClientProvider.notifier).publish(topic, '', retain: true);
+      ref.read(currentMessageProvider.notifier).set(root, '');
+      _showSuccess(context, 'Deleted retained message on: $topic');
+    } catch (e) {
+      _showError(context, 'Delete failed: $e');
     }
   }
 
@@ -151,6 +176,14 @@ class EnhancedPublishWidget extends HookConsumerWidget {
     final format = ref.watch(publishFormatProvider);
     final qos = ref.watch(publishQosProvider);
     final retain = ref.watch(publishRetainProvider);
+    // `selectionSignal` toggles only when the user picks a different topic in
+    // the tree (see tree_nodes_widget.dart), not on every keystroke here.
+    // Keying the sync effect off it — instead of off `payload` itself — is
+    // what stops the cursor from jumping to the end after each character:
+    // re-running this effect on every `payload` change would reset the
+    // controller's selection on every keystroke, since `onChanged` below
+    // writes each keystroke straight back into `payload`.
+    final selectionSignal = ref.watch(changeIshappeningProvider);
     final payload = ref.watch(currentMessageProvider)[root] ?? '';
     final payloadController = useTextEditingController(text: payload);
     useEffect(() {
@@ -159,7 +192,7 @@ class EnhancedPublishWidget extends HookConsumerWidget {
         TextPosition(offset: payloadController.text.length),
       );
       return null;
-    }, [root, payload]);
+    }, [root, selectionSignal]);
     final payloadError = _validatePayload(payload, format);
 
     return Column(
@@ -222,8 +255,7 @@ class EnhancedPublishWidget extends HookConsumerWidget {
                         ],
                         onChanged: (value) {
                           if (value != null) {
-                            ref.read(publishFormatProvider.notifier).state =
-                                value;
+                            ref.read(publishFormatProvider.notifier).set(value);
                           }
                         },
                       ),
@@ -276,10 +308,10 @@ class EnhancedPublishWidget extends HookConsumerWidget {
                         : Colors.transparent,
                   ),
                   onChanged: (value) {
-                    ref.read(currentMessageProvider.notifier).state = {
-                      ...ref.read(currentMessageProvider.notifier).state,
-                      root: value,
-                    };
+                    ref.read(currentMessageProvider.notifier).set(
+                      root,
+                      value,
+                    );
                   },
                 ),
               ),
@@ -329,8 +361,7 @@ class EnhancedPublishWidget extends HookConsumerWidget {
                           ],
                           onChanged: (value) {
                             if (value != null) {
-                              ref.read(publishQosProvider.notifier).state =
-                                  value;
+                              ref.read(publishQosProvider.notifier).set(value);
                             }
                           },
                         ),
@@ -358,8 +389,7 @@ class EnhancedPublishWidget extends HookConsumerWidget {
                       Switch(
                         value: retain,
                         onChanged: (value) {
-                          ref.read(publishRetainProvider.notifier).state =
-                              value;
+                          ref.read(publishRetainProvider.notifier).set(value);
                         },
                       ),
                     ],
@@ -375,19 +405,39 @@ class EnhancedPublishWidget extends HookConsumerWidget {
         // Publish Button
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.send),
-              label: const Text(
-                'Publish Message',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.send),
+                    label: const Text(
+                      'Publish Message',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: payloadError == null && topic.isNotEmpty
+                        ? () => _publishMessage(context, ref)
+                        : null,
+                  ),
+                ),
               ),
-              onPressed: payloadError == null && topic.isNotEmpty
-                  ? () => _publishMessage(context, ref)
-                  : null,
-            ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade600,
+                    side: BorderSide(color: Colors.red.shade300),
+                  ),
+                  onPressed: topic.isNotEmpty
+                      ? () => _deleteRetained(context, ref)
+                      : null,
+                ),
+              ),
+            ],
           ),
         ),
       ],

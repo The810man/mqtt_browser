@@ -1,46 +1,64 @@
+import 'dart:convert';
+
+import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:fl_nodes/fl_nodes.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:desktop_window/desktop_window.dart';
-import 'package:flutter/foundation.dart';
+import 'package:window_manager/window_manager.dart';
+import 'dart:io' show Platform;
 
+import 'detached_window_app.dart';
 import 'providers/providers.dart';
 
-enum SharedPreferenceKey {
-  connections('connections'),
-  nodeDistance('node_distance'),
-  nodeThickness('node_thickness'),
-  nodeOrigin('node_origin'),
-  nodeHeight('node_height'),
-  roundLines('round_lines'),
-  connectNodes('connect_nodes'),
-  darkMode('dark_mode'),
-  blinkDelay('blink_delay'),
-  blinkDuration('blink_duration');
+bool get _isDesktopPlatform =>
+    !kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS);
 
-  const SharedPreferenceKey(this.stringValue);
-  final String stringValue;
-}
-
-Future<void> setWindowConstraints() async {
-  if (!kIsWeb) {
-    const double minWidth = 400;
-    const double minHeight = 650;
-    await DesktopWindow.setMinWindowSize(const Size(minWidth, minHeight));
+Future<void> _setWindowConstraints() async {
+  if (_isDesktopPlatform) {
+    await DesktopWindow.setMinWindowSize(const Size(400, 650));
   }
 }
 
-late ProviderContainer globalProviderContainer;
-
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (!kIsWeb) {
-    await setWindowConstraints();
+
+  if (_isDesktopPlatform) {
+    WindowController? windowController;
+    try {
+      windowController = await WindowController.fromCurrentEngine();
+    } catch (_) {}
+
+    final argument = windowController?.arguments ?? '';
+
+    if (argument.isNotEmpty) {
+      final data = jsonDecode(argument) as Map<String, dynamic>;
+      final topicPath = data['topicPath'] as String? ?? '';
+
+      await windowManager.ensureInitialized();
+      windowManager.waitUntilReadyToShow(
+        WindowOptions(
+          size: const Size(1280, 720),
+          center: true,
+          title: topicPath.isEmpty ? 'MQTT Browser' : 'MQTT Browser — $topicPath',
+          backgroundColor: Colors.transparent,
+          skipTaskbar: false,
+        ),
+        () async {
+          await windowManager.show();
+          await windowManager.focus();
+        },
+      );
+
+      runApp(ProviderScope(child: DetachedWindowApp(data: data)));
+      return;
+    }
   }
 
-  final container = ProviderContainer();
-  globalProviderContainer = container;
-
-  runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
+  await _setWindowConstraints();
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
@@ -48,12 +66,17 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
-
     return MaterialApp.router(
       title: 'MQTT-Browser',
       theme: ref.watch(themeProvider),
-      routerConfig: router,
+      routerConfig: ref.watch(routerProvider),
+      localizationsDelegates: const [
+        FlNodeEditorLocalizationsDelegate(),
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('en')],
     );
   }
 }

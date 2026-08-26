@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_client.dart' show MqttQos;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../frontend/tree_node.dart';
@@ -29,31 +29,12 @@ class Port extends _$Port {
 }
 
 @riverpod
-class IsConnected extends _$IsConnected {
+class UseWebSocket extends _$UseWebSocket {
   @override
   bool build() => false;
 
   void set(bool value) => state = value;
-}
-
-@Riverpod(keepAlive: true)
-class Client extends _$Client {
-  @override
-  MqttClient? build() => null;
-
-  void set(MqttClient? value) => state = value;
-}
-
-@riverpod
-class MqttSettingsState extends _$MqttSettingsState {
-  @override
-  MqttSettings build() => MqttSettings(
-    host: 'localhost',
-    port: 1883,
-    clientId: 'mqtt_browser_client',
-  );
-
-  void updateSettings(MqttSettings settings) => state = settings;
+  void toggle() => state = !state;
 }
 
 @riverpod
@@ -69,7 +50,7 @@ MqttSettings mqttSettings(Ref ref) {
   );
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TabList extends _$TabList {
   @override
   List<TreeNode> build() => [];
@@ -77,7 +58,7 @@ class TabList extends _$TabList {
   void set(List<TreeNode> value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TabLength extends _$TabLength {
   @override
   int build() => 1;
@@ -85,7 +66,7 @@ class TabLength extends _$TabLength {
   void set(int value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TabIndex extends _$TabIndex {
   @override
   int build() => 0;
@@ -93,7 +74,7 @@ class TabIndex extends _$TabIndex {
   void set(int value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class Root extends _$Root {
   @override
   TreeNode build() => TreeNode(label: 'root');
@@ -101,7 +82,7 @@ class Root extends _$Root {
   void set(TreeNode value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class CurrentRoot extends _$CurrentRoot {
   @override
   TreeNode build() => ref.watch(rootProvider);
@@ -109,7 +90,7 @@ class CurrentRoot extends _$CurrentRoot {
   void set(TreeNode value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TabData extends _$TabData {
   @override
   Map<String, Map<String, dynamic>> build() => {};
@@ -117,7 +98,7 @@ class TabData extends _$TabData {
   void set(Map<String, Map<String, dynamic>> value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class TreeNodes extends _$TreeNodes {
   @override
   Map<String, List<TreeNode>> build() => {};
@@ -125,7 +106,7 @@ class TreeNodes extends _$TreeNodes {
   void set(Map<String, List<TreeNode>> value) => state = value;
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class SelectedItem extends _$SelectedItem {
   @override
   Map<String, TreeNode> build() => {};

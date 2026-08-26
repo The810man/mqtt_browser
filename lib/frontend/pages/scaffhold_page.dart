@@ -1,164 +1,222 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mqtt_browser/frontend/pages/tree_view_page.dart';
+import 'package:mqtt_browser/frontend/responsive.dart';
 import 'package:mqtt_browser/frontend/widgets/tab_widgets/single_node_view.dart';
 import 'package:mqtt_browser/frontend/widgets/sidebar_widget.dart';
 import 'package:mqtt_browser/providers/providers.dart';
 import 'package:mqtt_browser/frontend/tree_node.dart';
 import 'package:sidebarx/sidebarx.dart';
 import 'package:mqtt_browser/frontend/widgets/tab_widgets/tree_tab_widget.dart';
-import 'package:mqtt_browser/backend/mqtt_sys.dart';
 
-class ScaffoldPage extends ConsumerStatefulWidget {
+class ScaffoldPage extends HookConsumerWidget {
   const ScaffoldPage({super.key});
 
   @override
-  ConsumerState<ScaffoldPage> createState() => _ScaffholdPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tabList = ref.watch(tabListProvider);
+    final root = ref.watch(rootProvider);
+    final tabIndex = ref.watch(tabIndexProvider);
+    final effectiveTabs = tabList.isEmpty ? [root] : tabList;
+    final mobile = isMobile(context);
 
-class _ScaffholdPageState extends ConsumerState<ScaffoldPage>
-    with TickerProviderStateMixin {
-  final SidebarXController sidebarController = SidebarXController(
-    selectedIndex: 0,
-    extended: true,
-  );
-  final sideBarScaffoldKey = GlobalKey<ScaffoldState>();
-  late TabController tabController;
-  int tabLength = 1;
+    final tabController = useTabController(
+      initialLength: effectiveTabs.length,
+      initialIndex: min(tabIndex, max(0, effectiveTabs.length - 1)),
+      keys: [effectiveTabs.length],
+    );
 
-  void resetProviders() {
-    ref.read(tabListProvider.notifier).state = [];
-    ref.read(tabLengthProvider.notifier).state = 1;
-    ref.read(tabIndexProvider.notifier).state = 0;
-    ref.read(rootProvider.notifier).state = TreeNode(label: 'root');
-    ref.read(currentRootProvider.notifier).state = ref.read(rootProvider);
-    ref.read(tabDataProvider.notifier).state = {};
-    ref.read(treeNodesProvider.notifier).state = {};
-    ref.read(selectedItemProvider.notifier).state = {};
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    tabController = TabController(length: 1, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final notifier = ref.read(tabLengthProvider.notifier);
-      notifier.state = notifier.state.toInt();
-
-      tabController = TabController(length: notifier.state, vsync: this);
-    });
-  }
-
-  @override
-  void dispose() {
-    tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer(
-      builder: (context, ref, child) {
-        tabLength = ref.watch(tabLengthProvider);
-        final tabList = ref.watch(tabListProvider);
-        final root = ref.watch(rootProvider);
-        final effectiveTabList = tabList.isEmpty ? [root] : tabList;
-        final effectiveLength = effectiveTabList.length;
-        if (tabController.length != effectiveLength) {
-          tabController.dispose();
-          tabController = TabController(
-            length: effectiveLength,
-            vsync: this,
-            initialIndex: 0,
-          );
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (tabController.index != tabIndex &&
+            tabIndex < effectiveTabs.length) {
+          tabController.animateTo(tabIndex, duration: Duration.zero);
         }
-        if (tabList.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(tabListProvider.notifier).state = effectiveTabList;
-            ref.read(tabLengthProvider.notifier).state =
-                effectiveTabList.length;
-            ref.read(currentRootProvider.notifier).state = root;
-          });
-        }
-        return Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          key: sideBarScaffoldKey,
-          appBar: AppBar(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.95),
-                    Theme.of(
-                      context,
-                    ).colorScheme.secondary.withValues(alpha: 0.6),
-                  ],
-                ),
-              ),
-            ),
-            leading: IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {
-                sideBarScaffoldKey.currentState?.openDrawer();
-              },
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  disconnectClient(ref.watch(clientProvider));
-                  ref.read(mqttClientProvider.notifier).state =
-                      MqttConnectionState.disconnected;
-                  ref.read(isConnectedProvider.notifier).state = false;
-                  ref.read(clientProvider.notifier).state = null;
-                  resetProviders();
-                  ref.watch(routerProvider).refresh();
-                  ref.watch(routerProvider).pushNamed("setUpPage");
-                },
-                child: const Text("Disconnect"),
-              ),
-            ],
-            title: TabBar(
-              controller: tabController,
-              enableFeedback: true,
-              indicatorColor: Theme.of(context).colorScheme.onPrimary,
-              labelColor: Theme.of(context).colorScheme.onPrimary,
-              unselectedLabelColor: Theme.of(
-                context,
-              ).colorScheme.onPrimary.withValues(alpha: 0.7),
-              onTap: (value) {
-                ref.read(currentRootProvider.notifier).state =
-                    effectiveTabList[value];
-              },
-              isScrollable: true,
-              tabs: [
-                for (final tab in effectiveTabList)
-                  Treetabwidget(
-                    tab: tab,
-                    unSelectedIcon: const Icon(Icons.account_tree_rounded),
-                    selectedWidget: const SizedBox(),
-                    text: tab.label.toString(),
-                  ),
+      });
+      return null;
+    }, [tabIndex, tabController]);
+
+    final sidebarController = useMemoized(
+      () => SidebarXController(selectedIndex: 0, extended: true),
+    );
+    final scaffoldKey = useMemoized(() => GlobalKey<ScaffoldState>());
+
+    void resetProviders() {
+      ref.read(tabListProvider.notifier).set([]);
+      ref.read(tabLengthProvider.notifier).set(1);
+      ref.read(tabIndexProvider.notifier).set(0);
+      ref.read(rootProvider.notifier).set(TreeNode(label: 'root'));
+      ref.read(currentRootProvider.notifier).set(ref.read(rootProvider));
+      ref.read(tabDataProvider.notifier).set({});
+      ref.read(treeNodesProvider.notifier).set({});
+      ref.read(selectedItemProvider.notifier).set({});
+    }
+
+    final tabBar = TabBar(
+      controller: tabController,
+      enableFeedback: true,
+      indicatorColor: Theme.of(context).colorScheme.onPrimary,
+      labelColor: Theme.of(context).colorScheme.onPrimary,
+      unselectedLabelColor:
+          Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
+      onTap: (value) {
+        ref.read(tabIndexProvider.notifier).set(value);
+        ref.read(currentRootProvider.notifier).set(effectiveTabs[value]);
+      },
+      isScrollable: true,
+      tabAlignment: TabAlignment.start,
+      tabs: [
+        for (final tab in effectiveTabs)
+          Treetabwidget(
+            tab: tab,
+            unSelectedIcon: const Icon(Icons.account_tree_rounded),
+            selectedWidget: const SizedBox(),
+            text: tab.label,
+          ),
+      ],
+    );
+
+    return Scaffold(
+      key: scaffoldKey,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        toolbarHeight: mobile ? 52 : 60,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.95),
+                Theme.of(context).colorScheme.secondary.withValues(alpha: 0.6),
               ],
             ),
           ),
-          body: TabBarView(
-            controller: tabController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              for (final tab in effectiveTabList)
-                tab.label == root.label ? TreeViewPage() : Singlenodeview(),
-            ],
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.settings),
+          tooltip: 'Tree settings',
+          onPressed: () => scaffoldKey.currentState?.openDrawer(),
+        ),
+        title: mobile
+            ? Text(
+                effectiveTabs.isNotEmpty ? effectiveTabs[tabIndex < effectiveTabs.length ? tabIndex : 0].label : 'MQTT Browser',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              )
+            : tabBar,
+        actions: [
+          if (mobile)
+            IconButton(
+              icon: const Icon(Icons.tab),
+              tooltip: 'Switch tab',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) => _TabSwitcher(
+                    tabs: effectiveTabs,
+                    currentIndex: tabIndex,
+                    tabController: tabController,
+                    onSelect: (i) {
+                      ref.read(tabIndexProvider.notifier).set(i);
+                      ref.read(currentRootProvider.notifier).set(effectiveTabs[i]);
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              },
+            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: mobile ? 8 : 16,
+                vertical: mobile ? 4 : 8,
+              ),
+            ),
+            onPressed: () async {
+              await ref.read(mqttClientProvider.notifier).disconnect();
+              resetProviders();
+              ref.read(routerProvider).pushNamed('setUpPage');
+            },
+            child: Text(
+              mobile ? 'Quit' : 'Disconnect',
+              style: TextStyle(fontSize: mobile ? 12 : 14),
+            ),
           ),
-          drawer: Sidebarwidget(controller: sidebarController),
-        );
-      },
+          const SizedBox(width: 8),
+        ],
+        bottom: mobile ? null : null,
+      ),
+      body: Column(
+        children: [
+          if (mobile)
+            Material(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+              child: tabBar,
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: tabController,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                for (final tab in effectiveTabs)
+                  tab.label == root.label ? const TreeViewPage() : Singlenodeview(),
+              ],
+            ),
+          ),
+        ],
+      ),
+      drawer: Sidebarwidget(controller: sidebarController),
+    );
+  }
+}
+
+class _TabSwitcher extends StatelessWidget {
+  const _TabSwitcher({
+    required this.tabs,
+    required this.currentIndex,
+    required this.tabController,
+    required this.onSelect,
+  });
+
+  final List<TreeNode> tabs;
+  final int currentIndex;
+  final TabController tabController;
+  final void Function(int) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Open Tabs',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: tabs.length,
+              itemBuilder: (_, i) => ListTile(
+                leading: const Icon(Icons.account_tree_rounded),
+                title: Text(tabs[i].label),
+                selected: i == currentIndex,
+                onTap: () => onSelect(i),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

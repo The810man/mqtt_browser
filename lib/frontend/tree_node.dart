@@ -1,44 +1,64 @@
-class TreeNode {
-  TreeNode({this.label});
+import 'package:mqtt_browser/constants.dart';
 
+class TreeNode {
+  TreeNode({required this.label, this.parent});
+
+  String label;
   TreeNode? parent;
-  String? label;
-  List<String> history = [];
-  int totalMessages = 0;
-  String? get message => history.isNotEmpty ? history.last : null;
   List<TreeNode> children = [];
+  List<String> history = [];
+  List<DateTime> historyTimestamps = [];
+  int totalMessages = 0;
+
+  String? get message => history.isNotEmpty ? history.last : null;
+
+  /// Full MQTT topic path from the connection root (exclusive) to this node.
+  String get fullTopicPath {
+    final segments = <String>[];
+    TreeNode? cur = this;
+    while (cur != null && cur.parent != null) {
+      segments.add(cur.label);
+      cur = cur.parent;
+    }
+    return segments.reversed.join('/');
+  }
 
   int get messageCount {
-    int count = totalMessages;
-    for (var child in children) {
+    var count = totalMessages;
+    for (final child in children) {
       count += child.messageCount;
     }
     return count;
   }
 
-  void addMessage(String payload) {
-    if (history.length >= 100) {
-      history.removeAt(0);
-    }
-    history.add(payload);
-    totalMessages++;
-  }
-
   int get topicCount {
-    int count = history.isNotEmpty ? 1 : 0;
-    for (var child in children) {
+    var count = history.isNotEmpty ? 1 : 0;
+    for (final child in children) {
       count += child.topicCount;
     }
     return count;
   }
 
-  int getDepth() {
-    int depth = 0;
-    TreeNode? current = parent;
+  int get depth {
+    var d = 0;
+    var current = parent;
     while (current != null) {
-      depth++;
+      d++;
       current = current.parent;
     }
-    return depth;
+    return d;
   }
+
+  void addMessage(String payload) {
+    if (history.length >= AppConstants.maxMessageHistory) {
+      history.removeAt(0);
+      if (historyTimestamps.isNotEmpty) historyTimestamps.removeAt(0);
+    }
+    history.add(payload);
+    historyTimestamps.add(DateTime.now());
+    totalMessages++;
+  }
+
+  @override
+  String toString() => 'TreeNode($label)';
 }

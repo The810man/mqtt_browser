@@ -302,9 +302,10 @@ class ConnectionsWidget extends ConsumerWidget {
                             ),
                             onTap: () {
                               // apply connection - also restore settings if exist
-                              ref.read(hostProvider.notifier).state = host;
-                              ref.read(portProvider.notifier).state = port
-                                  .toString();
+                              ref.read(hostProvider.notifier).set(host);
+                              ref.read(portProvider.notifier).set(
+                                port.toString(),
+                              );
                               if (connection.containsKey('settings')) {
                                 try {
                                   final settingsMap = Map<String, dynamic>.from(

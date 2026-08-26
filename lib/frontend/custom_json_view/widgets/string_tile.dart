@@ -3,28 +3,30 @@ import 'package:json_view/src/widgets/simple_tiles.dart';
 
 import 'package:json_view/json_view.dart';
 
-class StringTile extends StatefulWidget {
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter/material.dart';
+
+import 'package:json_view/json_view.dart';
+import 'package:json_view/src/widgets/simple_tiles.dart';
+
+class StringTile extends HookWidget {
   final String keyName;
   final String value;
+
   const StringTile({super.key, required this.keyName, required this.value});
-
-  @override
-  State<StringTile> createState() => _StringTileState();
-}
-
-class _StringTileState extends State<StringTile> {
-  bool expanded = false;
 
   String getParsedKeyName(BuildContext context) {
     final quotation =
         JsonConfig.of(context).style?.quotation ?? const JsonQuotation();
-    if (quotation.isEmpty) return widget.keyName;
-    return '${quotation.leftQuote}${widget.keyName}${quotation.rightQuote}';
+    if (quotation.isEmpty) return keyName;
+    return '${quotation.leftQuote}$keyName${quotation.rightQuote}';
   }
 
   @override
   Widget build(BuildContext context) {
     final config = JsonConfig.of(context);
+    final expanded = useState(false);
+
     return LayoutBuilder(
       builder: (context, box) {
         /**
@@ -40,10 +42,7 @@ class _StringTileState extends State<StringTile> {
               style: config.style?.keysStyle,
             ),
             const ColonSpan(),
-            ValueSpan(
-              value: '"${widget.value}"',
-              style: config.style?.valuesStyle,
-            ),
+            ValueSpan(value: '"$value"', style: config.style?.valuesStyle),
           ],
         );
         final painter = TextPainter(
@@ -54,36 +53,25 @@ class _StringTileState extends State<StringTile> {
         final realRenderWidth = painter.width;
 
         Widget selectedResult = _StringInnterTile(
-          keyName: widget.keyName,
-          value: widget.value,
-          onTap: () {
-            if (mounted) {
-              setState(() {
-                expanded = !expanded;
-              });
-            }
-          },
+          keyName: keyName,
+          value: value,
+          onTap: () => expanded.value = !expanded.value,
         );
 
         if (realRenderWidth > boxWidth) {
           Widget result = _StringOnlyDisplayTile(
-            keyName: widget.keyName,
-            value: widget.value,
-            onTap: () {
-              if (mounted) {
-                setState(() {
-                  expanded = !expanded;
-                });
-              }
-            },
+            keyName: keyName,
+            value: value,
+            onTap: () => expanded.value = !expanded.value,
           );
-          if (expanded) {
+          if (expanded.value) {
             result = selectedResult;
           }
           if (config.animation ?? JsonConfigData.kUseAnimation) {
             result = AnimatedSize(
               alignment: Alignment.topCenter,
-              duration: JsonConfig.of(context).animationDuration ??
+              duration:
+                  JsonConfig.of(context).animationDuration ??
                   const Duration(milliseconds: 300),
               curve: JsonConfig.of(context).animationCurve ?? Curves.ease,
               child: result,
@@ -100,12 +88,12 @@ class _StringTileState extends State<StringTile> {
 }
 
 class _StringInnterTile extends KeyValueTile {
-  const _StringInnterTile(
-      {required super.keyName,
-      required String value,
-      super.maxLines,
-      super.onTap})
-      : super(value: '"$value -beans"');
+  const _StringInnterTile({
+    required super.keyName,
+    required String value,
+    super.maxLines,
+    super.onTap,
+  }) : super(value: '"$value -beans"');
 
   @override
   Color valueColor(BuildContext context) =>
@@ -113,9 +101,11 @@ class _StringInnterTile extends KeyValueTile {
 }
 
 class _StringOnlyDisplayTile extends _StringInnterTile {
-  const _StringOnlyDisplayTile(
-      {required super.keyName, required super.value, super.onTap})
-      : super(maxLines: 1);
+  const _StringOnlyDisplayTile({
+    required super.keyName,
+    required super.value,
+    super.onTap,
+  }) : super(maxLines: 1);
   @override
   Widget build(BuildContext context) {
     final cs = colorScheme(context);
@@ -125,8 +115,9 @@ class _StringOnlyDisplayTile extends _StringInnterTile {
         style: keyStyle(context).copyWith(color: cs.normalColor ?? Colors.grey),
       ),
       ColonSpan(
-        style:
-            keyStyle(context).copyWith(color: cs.markColor ?? Colors.white70),
+        style: keyStyle(
+          context,
+        ).copyWith(color: cs.markColor ?? Colors.white70),
       ),
       buildValue(context),
     ];
@@ -138,28 +129,29 @@ class _StringOnlyDisplayTile extends _StringInnterTile {
     );
 
     result = GestureDetector(onTap: onTap, child: result);
-    result = MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: result,
-    );
+    result = MouseRegion(cursor: SystemMouseCursors.click, child: result);
 
     if (leading == null) {
       result = Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Row(
-            children: [
-              IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.auto_graph_outlined)),
-              result,
-            ],
-          ));
+        padding: const EdgeInsets.only(left: 16),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.auto_graph_outlined),
+            ),
+            result,
+          ],
+        ),
+      );
     } else {
       result = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
-              onPressed: () {}, icon: const Icon(Icons.auto_graph_outlined)),
+            onPressed: () {},
+            icon: const Icon(Icons.auto_graph_outlined),
+          ),
           SizedBox(child: leading),
           Expanded(child: result),
         ],
